@@ -1,0 +1,1 @@
+# Subscription Tracker for managing digital subscriptions and trial periods
