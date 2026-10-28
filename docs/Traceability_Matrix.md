@@ -69,72 +69,72 @@ This matrix provides full bidirectional traceability between:
 
 ## Part 3 — REST API Endpoints Traceability Mapping
 
-Цей розділ встановлює двосторонній зв'язок між вимогами SRS (`REQ-ID`) та кінцевими точками (ендпоінтами) REST API, описаними у специфікації OpenAPI 3.0.3 ([`openapi.yaml`](../openapi.yaml)), створеній у межах переходу на клієнт-серверну архітектуру (контрольна точка **API-GATE**, 2026-10-28).
+This section establishes a bidirectional relationship between the SRS requirements (`REQ-ID`) and the REST API endpoints defined in the OpenAPI 3.0.3 specification ([`openapi.yaml`](../openapi.yaml)), created as part of the architecture transition to a client-server model (**API-GATE** checkpoint, 2026-10-28).
 
-### 3.1 Мапінг вимог SRS до REST API ендпоінтів
+### 3.1 SRS Requirements to REST API Endpoints Mapping
 
-| REQ-ID | Вимога | API Endpoint | HTTP Method |
-|--------|--------|--------------|-------------|
-| **FR-01.1** | Додавання нової підписки з обов'язковими полями; отримання списку та деталей підписок | `/subscriptions`<br>`/subscriptions/{id}` | `POST`, `GET`<br>`GET` |
-| **FR-01.2** | Редагування будь-якого поля існуючої підписки | `/subscriptions/{id}` | `PUT`, `GET` |
-| **FR-01.3** | Скасування підписки зі збереженням запису та бейджем "Cancelled" (soft delete) | `/subscriptions/{id}`<br>`/subscriptions` | `DELETE`<br>`GET` |
-| **FR-01.4** | Розрахунок наступної дати оплати (Next Billing Date = попередня дата + інтервал) | `/subscriptions`<br>`/subscriptions/{id}`<br>`/billing-events` | `POST`<br>`PUT`<br>`POST` |
-| **FR-01.5** | Розрахунок оцінки річних витрат (Annual Spend Estimate) для підписки | `/subscriptions`<br>`/subscriptions/{id}`<br>`/analytics/summary` | `POST`<br>`PUT`<br>`GET` |
-| **FR-02.1** | Додавання безкоштовного пробного періоду (з опційним прив'язанням до підписки) | `/trials`<br>`/trials/{id}` | `POST`, `GET`<br>`GET`, `PUT` |
-| **FR-02.2** | Можливість існування автономного пробного періоду без прив'язаної підписки | `/trials` | `POST`, `GET` |
-| **FR-02.3** | Створення та існування підписки без попереднього пробного періоду | `/subscriptions`<br>`/trials` | `POST`<br>`POST` |
-| **FR-02.4** | Виявлення завершених пробних періодів при старті застосунку (перехід у статус `expired`) | `/system/startup-check` | `POST` |
-| **FR-02.5** | Запит на розв'язання завершеного тріалу: конвертація (`convert`) або скасування (`cancel`) | `/trials/{id}/resolve` | `PATCH` |
-| **FR-02.6** | Генерація та відображення сповіщення `TRIAL_EXPIRY` при наближенні дати закінчення тріалу | `/notifications`<br>`/system/startup-check` | `GET`<br>`POST` |
-| **FR-03.1** | Відображення індикатора настання дати платежу (Due badge) на картці підписки | `/billing-events`<br>`/subscriptions` | `POST`<br>`GET` |
-| **FR-03.2** | Підтвердження білінгової події як оплаченої (`paid`) або пропущеної (`skipped`); перерахунок наступної дати | `/billing-events` | `POST` |
-| **FR-03.3** | Фіксація прострочених подій; збереження статусу очікування до явного вирішення користувачем | `/system/startup-check`<br>`/billing-events` | `POST`<br>`POST` |
-| **FR-03.4** | Фіксація атрибутів історії білінгу (назва сервісу, сума, дата, статус оплати) | `/billing-events`<br>`/billing-events/{id}`<br>`/subscriptions/{id}/billing-events` | `POST`, `GET`<br>`GET`<br>`GET` |
-| **FR-03.5** | Перегляд журналу історії платежів із сортуванням за датою у спадному порядку | `/billing-events`<br>`/subscriptions/{id}/billing-events`<br>`/billing-events/{id}` | `GET`<br>`GET`<br>`GET` |
-| **FR-04.1** | Розрахунок сумарних щомісячних витрат користувача (Total Monthly Spend = Σ Annual ÷ 12) | `/analytics/summary` | `GET` |
-| **FR-04.2** | Розрахунок сумарних річних витрат користувача (Total Annual Spend = Σ Annual Estimates) | `/analytics/summary` | `GET` |
-| **FR-04.3** | Врахування в аналітичних розрахунках виключно активних підписок | `/analytics/summary`<br>`/subscriptions` | `GET`<br>`GET` |
-| **FR-05.1** | Глобальне налаштування строку завчасного сповіщення про поновлення підписки (default: 3 дні) | `/settings` | `GET`, `PUT` |
-| **FR-05.2** | Глобальне налаштування строку завчасного сповіщення про закінчення тріалу (default: 3 дні) | `/settings` | `GET`, `PUT` |
-| **FR-05.3** | Індивідуальне перевизначення строку завчасного сповіщення для окремої підписки або тріалу | `/settings`<br>`/subscriptions/{id}`<br>`/trials/{id}` | `PUT`<br>`PUT`<br>`PUT` |
-| **FR-05.4** | Відображення інлайн-банерів сповіщень на головній панелі | `/notifications` | `GET` |
-| **FR-05.5** | Персистентність сповіщень до моменту їх явного закриття (dismiss) користувачем | `/notifications`<br>`/notifications/{id}/dismiss` | `GET`<br>`PATCH` |
-| **FR-05.6** | Автоматична перевірка стану при старті застосунку; зведений банер пропущених подій | `/system/startup-check`<br>`/notifications` | `POST`<br>`GET` |
-| **FR-05.7** | Диференціація типів сповіщень (`RENEWAL`, `TRIAL_EXPIRY`, `STARTUP_SUMMARY`) з окремою стилізацією | `/notifications`<br>`/system/startup-check` | `GET`<br>`POST` |
-| **FR-06.1** | Персистентне збереження даних усіх сутностей системи через REST API (заміна `localStorage`) | `/subscriptions`<br>`/trials`<br>`/billing-events`<br>`/settings` | `GET`, `POST`, `PUT`, `DELETE`<br>`GET`, `POST`, `PUT`, `PATCH`<br>`GET`, `POST`<br>`GET`, `PUT` |
-| **FR-06.2** | Експорт усіх даних застосунку у єдиний структурований JSON-файл | `/system/export` | `GET` |
-| **FR-06.3** | Імпорт даних з резервної копії JSON із попередньою валідацією структури схеми | `/system/import` | `POST` |
-| **FR-06.4** | Попередження користувача про незворотний перезапис даних перед виконанням імпорту | `/system/import` | `POST` |
-| **NFR-03** | Незмінність (immutability) історії платежів (відсутність PUT/DELETE); розрахунок дат за системним годинником | `/billing-events`<br>`/billing-events/{id}`<br>`/subscriptions/{id}/billing-events` | `POST`, `GET`<br>`GET`<br>`GET` |
-| **NFR-05** | Безпечна обробка некоректних або пошкоджених файлів імпорту (повернення 400 Bad Request) | `/system/import` | `POST` |
-| **NFR-06** | Портативність і повна взаємна сумісність експортованої та імпортованої схеми `DataExport` | `/system/export`<br>`/system/import` | `GET`<br>`POST` |
+| REQ-ID | Requirement | API Endpoint | HTTP Method |
+|--------|-------------|--------------|-------------|
+| **FR-01.1** | Add a new subscription with required fields; retrieve the list and details of subscriptions | `/subscriptions`<br>`/subscriptions/{id}` | `POST`, `GET`<br>`GET` |
+| **FR-01.2** | Edit any field of an existing subscription | `/subscriptions/{id}` | `PUT`, `GET` |
+| **FR-01.3** | Cancel a subscription while preserving the record with a "Cancelled" badge (soft delete) | `/subscriptions/{id}`<br>`/subscriptions` | `DELETE`<br>`GET` |
+| **FR-01.4** | Calculate the next billing date (Next Billing Date = previous date + interval) | `/subscriptions`<br>`/subscriptions/{id}`<br>`/billing-events` | `POST`<br>`PUT`<br>`POST` |
+| **FR-01.5** | Calculate the Annual Spend Estimate for a subscription | `/subscriptions`<br>`/subscriptions/{id}`<br>`/analytics/summary` | `POST`<br>`PUT`<br>`GET` |
+| **FR-02.1** | Add a free trial period (with optional binding to a subscription) | `/trials`<br>`/trials/{id}` | `POST`, `GET`<br>`GET`, `PUT` |
+| **FR-02.2** | Support standalone trial periods without a linked subscription | `/trials` | `POST`, `GET` |
+| **FR-02.3** | Create and maintain a subscription without a prior trial period | `/subscriptions`<br>`/trials` | `POST`<br>`POST` |
+| **FR-02.4** | Detect expired trial periods upon application startup (transition to `expired` status) | `/system/startup-check` | `POST` |
+| **FR-02.5** | Request resolution for an expired trial: convert (`convert`) or cancel (`cancel`) | `/trials/{id}/resolve` | `PATCH` |
+| **FR-02.6** | Generate and display a `TRIAL_EXPIRY` notification as the trial end date approaches | `/notifications`<br>`/system/startup-check` | `GET`<br>`POST` |
+| **FR-03.1** | Display a payment due indicator (Due badge) on the subscription card | `/billing-events`<br>`/subscriptions` | `POST`<br>`GET` |
+| **FR-03.2** | Confirm a billing event as paid (`paid`) or skipped (`skipped`); recalculate next date | `/billing-events` | `POST` |
+| **FR-03.3** | Record overdue events; retain pending status until explicitly resolved by the user | `/system/startup-check`<br>`/billing-events` | `POST`<br>`POST` |
+| **FR-03.4** | Record billing history attributes (service name, amount, date, payment status) | `/billing-events`<br>`/billing-events/{id}`<br>`/subscriptions/{id}/billing-events` | `POST`, `GET`<br>`GET`<br>`GET` |
+| **FR-03.5** | View payment history log sorted by date in descending order | `/billing-events`<br>`/subscriptions/{id}/billing-events`<br>`/billing-events/{id}` | `GET`<br>`GET`<br>`GET` |
+| **FR-04.1** | Calculate total user monthly spend (Total Monthly Spend = Σ Annual ÷ 12) | `/analytics/summary` | `GET` |
+| **FR-04.2** | Calculate total user annual spend (Total Annual Spend = Σ Annual Estimates) | `/analytics/summary` | `GET` |
+| **FR-04.3** | Include strictly active subscriptions in analytical calculations | `/analytics/summary`<br>`/subscriptions` | `GET`<br>`GET` |
+| **FR-05.1** | Global notification lead-time setting for subscription renewals (default: 3 days) | `/settings` | `GET`, `PUT` |
+| **FR-05.2** | Global notification lead-time setting for trial expirations (default: 3 days) | `/settings` | `GET`, `PUT` |
+| **FR-05.3** | Override notification lead-time for an individual subscription or trial | `/settings`<br>`/subscriptions/{id}`<br>`/trials/{id}` | `PUT`<br>`PUT`<br>`PUT` |
+| **FR-05.4** | Display inline notification banners on the main dashboard | `/notifications` | `GET` |
+| **FR-05.5** | Notification persistence until explicitly dismissed by the user | `/notifications`<br>`/notifications/{id}/dismiss` | `GET`<br>`PATCH` |
+| **FR-05.6** | Automatic state check on app startup; aggregated summary banner for missed events | `/system/startup-check`<br>`/notifications` | `POST`<br>`GET` |
+| **FR-05.7** | Differentiate notification types (`RENEWAL`, `TRIAL_EXPIRY`, `STARTUP_SUMMARY`) with distinct styling | `/notifications`<br>`/system/startup-check` | `GET`<br>`POST` |
+| **FR-06.1** | Persistent data storage for all system entities via REST API (replacing `localStorage`) | `/subscriptions`<br>`/trials`<br>`/billing-events`<br>`/settings` | `GET`, `POST`, `PUT`, `DELETE`<br>`GET`, `POST`, `PUT`, `PATCH`<br>`GET`, `POST`<br>`GET`, `PUT` |
+| **FR-06.2** | Export all application data into a single structured JSON file | `/system/export` | `GET` |
+| **FR-06.3** | Import data from a backup JSON file with pre-validation of the schema structure | `/system/import` | `POST` |
+| **FR-06.4** | Warn the user about irreversible data overwriting prior to performing import | `/system/import` | `POST` |
+| **NFR-03** | Payment history immutability (no PUT/DELETE); date calculations based on system clock | `/billing-events`<br>`/billing-events/{id}`<br>`/subscriptions/{id}/billing-events` | `POST`, `GET`<br>`GET`<br>`GET` |
+| **NFR-05** | Graceful handling of invalid or corrupted import files (returns 400 Bad Request) | `/system/import` | `POST` |
+| **NFR-06** | Portability and full mutual compatibility of exported and imported `DataExport` schema | `/system/export`<br>`/system/import` | `GET`<br>`POST` |
 
-### 3.2 Зворотне трасування REST API ендпоінтів до вимог SRS
+### 3.2 REST API Endpoints Reverse Traceability to SRS Requirements
 
-| HTTP Method | API Endpoint | Операція (Operation ID) | Призначення операції | Покриті вимоги (REQ-ID) |
-|-------------|--------------|--------------------------|-----------------------|-------------------------|
-| `GET` | `/subscriptions` | `listSubscriptions` | Отримання списку всіх підписок (з опційною фільтрацією за `status`) | **FR-01.1**, **FR-01.3**, **FR-04.3** |
-| `POST` | `/subscriptions` | `createSubscription` | Створення нової підписки з автоматичним розрахунком дат та витрат | **FR-01.1**, **FR-01.4**, **FR-01.5** |
-| `GET` | `/subscriptions/{id}` | `getSubscription` | Отримання детальної інформації про підписку за UUID | **FR-01.1**, **FR-01.2** |
-| `PUT` | `/subscriptions/{id}` | `updateSubscription` | Оновлення полів підписки з автоматичним перерахунком дати/витрат | **FR-01.2**, **FR-01.4**, **FR-01.5** |
-| `DELETE` | `/subscriptions/{id}` | `cancelSubscription` | М'яке скасування підписки (встановлення статусу `cancelled`, збереження запису) | **FR-01.3** |
-| `GET` | `/subscriptions/{id}/billing-events` | `getSubscriptionBillingHistory` | Отримання незмінної історії платежів для конкретної підписки | **FR-03.4**, **FR-03.5**, **NFR-03** |
-| `GET` | `/trials` | `listTrials` | Отримання списку всіх безкоштовних пробних періодів | **FR-02.1**, **FR-02.2** |
-| `POST` | `/trials` | `createTrial` | Створення пробного періоду (з опційним посиланням на підписку) | **FR-02.1**, **FR-02.2**, **FR-02.3** |
-| `GET` | `/trials/{id}` | `getTrial` | Отримання деталей пробного періоду за UUID | **FR-02.1** |
-| `PUT` | `/trials/{id}` | `updateTrial` | Оновлення параметрів пробного періоду | **FR-02.1** |
-| `PATCH` | `/trials/{id}/resolve` | `resolveTrial` | Розв'язання завершеного тріалу (конвертація у підписку або скасування) | **FR-02.5** |
-| `GET` | `/billing-events` | `listBillingEvents` | Перегляд журналу білінгових подій із сортуванням desc за замовчуванням | **FR-03.4**, **FR-03.5** |
-| `POST` | `/billing-events` | `confirmBillingEvent` | Підтвердження платежу (`paid`/`skipped`), перерахунок дати наступного списання | **FR-01.4**, **FR-03.1**, **FR-03.2**, **FR-03.3**, **FR-03.4** |
-| `GET` | `/billing-events/{id}` | `getBillingEvent` | Перегляд окремого незмінного запису історії білінгу | **FR-03.4**, **FR-03.5**, **NFR-03** |
-| `GET` | `/analytics/summary` | `getAnalyticsSummary` | Отримання агрегованої фінансової аналітики (місячні та річні витрати в UAH) | **FR-01.5**, **FR-04.1**, **FR-04.2**, **FR-04.3** |
-| `GET` | `/notifications` | `listNotifications` | Отримання списку активних сповіщень, відсортованих за пріоритетом | **FR-02.6**, **FR-05.4**, **FR-05.5**, **FR-05.6**, **FR-05.7** |
-| `PATCH` | `/notifications/{id}/dismiss` | `dismissNotification` | Відхилення/закриття сповіщення користувачем | **FR-05.5** |
-| `GET` | `/settings` | `getSettings` | Отримання поточних глобальних налаштувань lead-time сповіщень | **FR-05.1**, **FR-05.2** |
-| `PUT` | `/settings` | `updateSettings` | Оновлення глобальних строків сповіщень для поновлень та тріалів | **FR-05.1**, **FR-05.2**, **FR-05.3** |
-| `POST` | `/system/startup-check` | `runStartupCheck` | Перевірка стану при старті: виявлення завершених тріалів та прострочених платежів | **FR-02.4**, **FR-02.6**, **FR-03.3**, **FR-05.6**, **FR-05.7** |
-| `GET` | `/system/export` | `exportData` | Експорт повного знімка даних системи у форматі JSON | **FR-06.2**, **NFR-06** |
-| `POST` | `/system/import` | `importData` | Імпорт даних з JSON-файлу після підтвердження користувачем та валідації | **FR-06.3**, **FR-06.4**, **NFR-05**, **NFR-06** |
+| HTTP Method | API Endpoint | Operation ID | Operation Purpose | Covered Requirements (REQ-ID) |
+|-------------|--------------|--------------|-------------------|-------------------------------|
+| `GET` | `/subscriptions` | `listSubscriptions` | Retrieve a list of all subscriptions (optional status filtering) | **FR-01.1**, **FR-01.3**, **FR-04.3** |
+| `POST` | `/subscriptions` | `createSubscription` | Create a new subscription with auto-calculation of dates and spend | **FR-01.1**, **FR-01.4**, **FR-01.5** |
+| `GET` | `/subscriptions/{id}` | `getSubscription` | Retrieve detailed subscription information by UUID | **FR-01.1**, **FR-01.2** |
+| `PUT` | `/subscriptions/{id}` | `updateSubscription` | Update subscription fields with automatic date/spend recalculation | **FR-01.2**, **FR-01.4**, **FR-01.5** |
+| `DELETE` | `/subscriptions/{id}` | `cancelSubscription` | Soft-cancel a subscription (sets status to `cancelled`, preserves record) | **FR-01.3** |
+| `GET` | `/subscriptions/{id}/billing-events` | `getSubscriptionBillingHistory` | Retrieve immutable billing history for a specific subscription | **FR-03.4**, **FR-03.5**, **NFR-03** |
+| `GET` | `/trials` | `listTrials` | Retrieve a list of all free trial periods | **FR-02.1**, **FR-02.2** |
+| `POST` | `/trials` | `createTrial` | Create a trial period (optional linking to a subscription) | **FR-02.1**, **FR-02.2**, **FR-02.3** |
+| `GET` | `/trials/{id}` | `getTrial` | Retrieve trial details by UUID | **FR-02.1** |
+| `PUT` | `/trials/{id}` | `updateTrial` | Update trial period parameters | **FR-02.1** |
+| `PATCH` | `/trials/{id}/resolve` | `resolveTrial` | Resolve an expired trial (convert to subscription or cancel) | **FR-02.5** |
+| `GET` | `/billing-events` | `listBillingEvents` | View billing events log with default desc sorting | **FR-03.4**, **FR-03.5** |
+| `POST` | `/billing-events` | `confirmBillingEvent` | Confirm payment (`paid`/`skipped`), recalculate next charge date | **FR-01.4**, **FR-03.1**, **FR-03.2**, **FR-03.3**, **FR-03.4** |
+| `GET` | `/billing-events/{id}` | `getBillingEvent` | View an individual immutable billing history record | **FR-03.4**, **FR-03.5**, **NFR-03** |
+| `GET` | `/analytics/summary` | `getAnalyticsSummary` | Retrieve aggregated financial analytics (monthly and annual spend in UAH) | **FR-01.5**, **FR-04.1**, **FR-04.2**, **FR-04.3** |
+| `GET` | `/notifications` | `listNotifications` | Retrieve a list of active notifications sorted by priority | **FR-02.6**, **FR-05.4**, **FR-05.5**, **FR-05.6**, **FR-05.7** |
+| `PATCH` | `/notifications/{id}/dismiss` | `dismissNotification` | Dismiss/close a notification by the user | **FR-05.5** |
+| `GET` | `/settings` | `getSettings` | Retrieve current global lead-time notification settings | **FR-05.1**, **FR-05.2** |
+| `PUT` | `/settings` | `updateSettings` | Update global lead-time notification settings for renewals and trials | **FR-05.1**, **FR-05.2**, **FR-05.3** |
+| `POST` | `/system/startup-check` | `runStartupCheck` | Perform startup check: detect expired trials and overdue payments | **FR-02.4**, **FR-02.6**, **FR-03.3**, **FR-05.6**, **FR-05.7** |
+| `GET` | `/system/export` | `exportData` | Export a full snapshot of system data in JSON format | **FR-06.2**, **NFR-06** |
+| `POST` | `/system/import` | `importData` | Import data from a JSON file after user confirmation and validation | **FR-06.3**, **FR-06.4**, **NFR-05**, **NFR-06** |
 
 ---
 
