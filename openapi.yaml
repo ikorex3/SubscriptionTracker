@@ -1,0 +1,1467 @@
+openapi: 3.0.3
+
+info:
+  title: Subscription Tracker REST API
+  description: |
+    REST API for the **Subscription Tracker** application.
+
+    This API provides backend services for managing digital subscriptions,
+    free trial periods, billing history, in-app notifications, spend analytics,
+    and global settings.
+
+    ## Architecture Note
+    This specification documents the server-side REST API layer introduced
+    as part of the architecture transition from client-side `localStorage` to
+    a full client-server model.
+
+    ## Requirements Traceability
+    Every endpoint is annotated with an `x-requirements` extension field
+    listing the SRS requirement IDs it implements.
+    Full traceability: `spec/SRS.md` → `docs/Traceability_Matrix.md`.
+
+    ## Domain Model Summary
+    | Resource | URI | SRS Source |
+    |----------|-----|-----------|
+    | Subscriptions | `/subscriptions` | FR-01.x |
+    | Trials | `/trials` | FR-02.x |
+    | Billing Events | `/billing-events` | FR-03.x |
+    | Analytics | `/analytics` | FR-04.x |
+    | Notifications | `/notifications` | FR-05.x |
+    | Settings | `/settings` | FR-05.1, FR-05.2 |
+    | System | `/system` | FR-06.x |
+
+  version: "1.0.0"
+  contact:
+    name: Subscription Tracker Project (ПІС Lab)
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+
+tags:
+  - name: subscriptions
+    description: "Subscription lifecycle management — FR-01.x"
+  - name: trials
+    description: "Free trial period management — FR-02.x"
+  - name: billing
+    description: "Billing event confirmation and history — FR-03.x"
+  - name: analytics
+    description: "Spend analytics and reporting — FR-04.x"
+  - name: notifications
+    description: "In-app notification management — FR-05.x"
+  - name: settings
+    description: "Global notification lead-time settings — FR-05.1, FR-05.2"
+  - name: system
+    description: "System operations: startup check, data export/import — FR-06.x"
+
+# ==============================================================================
+# PATHS
+# ==============================================================================
+paths:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # SUBSCRIPTIONS
+  # ────────────────────────────────────────────────────────────────────────────
+  /subscriptions:
+
+    get:
+      tags: [subscriptions]
+      summary: List all subscriptions
+      description: |
+        Returns all subscription records. Optionally filter by `status`.
+        Cancelled subscriptions are included (retained with badge per FR-01.3).
+      operationId: listSubscriptions
+      x-requirements: [FR-01.1, FR-01.3, FR-04.3]
+      parameters:
+        - name: status
+          in: query
+          description: Filter subscriptions by status
+          required: false
+          schema:
+            type: string
+            enum: [active, cancelled]
+      responses:
+        "200":
+          description: Subscriptions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subscription"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [subscriptions]
+      summary: Create a new subscription
+      description: |
+        Creates a subscription record initialized with status `active`.
+        The server automatically calculates `nextBillingDate` (FR-01.4)
+        and `annualSpendEstimate` / `monthlySpendEstimate` (FR-01.5).
+      operationId: createSubscription
+      x-requirements: [FR-01.1, FR-01.4, FR-01.5]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionCreate"
+            example:
+              serviceName: "Netflix"
+              cost: 199.00
+              billingIntervalType: "monthly"
+              firstBillingDate: "2026-10-01"
+              notificationLeadTimeDays: 5
+      responses:
+        "201":
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /subscriptions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    get:
+      tags: [subscriptions]
+      summary: Get a subscription by ID
+      operationId: getSubscription
+      x-requirements: [FR-01.1, FR-01.2]
+      responses:
+        "200":
+          description: Subscription found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags: [subscriptions]
+      summary: Update a subscription
+      description: |
+        Modifies any writable field of an existing subscription (FR-01.2).
+        If the billing interval or cost is changed, the server recalculates
+        `nextBillingDate` (FR-01.4) and spend estimates (FR-01.5).
+      operationId: updateSubscription
+      x-requirements: [FR-01.2, FR-01.4, FR-01.5]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionUpdate"
+      responses:
+        "200":
+          description: Subscription updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      tags: [subscriptions]
+      summary: Cancel a subscription (soft delete)
+      description: |
+        Sets subscription status to `cancelled`. The record is **retained**
+        and remains visible with a "Cancelled" badge (FR-01.3). Records are
+        never permanently removed. Returns the updated subscription object.
+      operationId: cancelSubscription
+      x-requirements: [FR-01.3]
+      responses:
+        "200":
+          description: Subscription cancelled — record retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict — subscription is already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /subscriptions/{id}/billing-events:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    get:
+      tags: [billing]
+      summary: Get billing history for a specific subscription
+      description: |
+        Returns all confirmed billing events for the given subscription,
+        sorted by `dateConfirmed` descending. Entries are immutable (NFR-03).
+      operationId: getSubscriptionBillingHistory
+      x-requirements: [FR-03.4, FR-03.5, NFR-03]
+      responses:
+        "200":
+          description: Billing history for the subscription
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillingEvent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # TRIALS
+  # ────────────────────────────────────────────────────────────────────────────
+  /trials:
+
+    get:
+      tags: [trials]
+      summary: List all free trials
+      description: |
+        Returns all free trial records. Optionally filter by `status`.
+      operationId: listTrials
+      x-requirements: [FR-02.1, FR-02.2]
+      parameters:
+        - name: status
+          in: query
+          description: Filter trials by status
+          required: false
+          schema:
+            type: string
+            enum: [active, expired, converted, cancelled]
+      responses:
+        "200":
+          description: Trials retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trial"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [trials]
+      summary: Create a new free trial
+      description: |
+        Creates a trial record initialized with status `active` and
+        an assumed cost of 0 UAH (FR-02.1). `linkedSubscriptionId` is
+        optional — if omitted, the trial is standalone (FR-02.2).
+        If provided, the linked subscription must exist.
+      operationId: createTrial
+      x-requirements: [FR-02.1, FR-02.2, FR-02.3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialCreate"
+            example:
+              serviceName: "Adobe CC"
+              startDate: "2026-09-21"
+              endDate: "2026-12-21"
+              linkedSubscriptionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              notificationLeadTimeDays: 5
+      responses:
+        "201":
+          description: Trial created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trial"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Linked subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /trials/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    get:
+      tags: [trials]
+      summary: Get a trial by ID
+      operationId: getTrial
+      x-requirements: [FR-02.1]
+      responses:
+        "200":
+          description: Trial found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trial"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags: [trials]
+      summary: Update a trial
+      description: |
+        Updates editable fields of a free trial. Status cannot be changed
+        through this endpoint — use `PATCH /trials/{id}/resolve` for expiry
+        resolution (FR-02.5).
+      operationId: updateTrial
+      x-requirements: [FR-02.1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialUpdate"
+      responses:
+        "200":
+          description: Trial updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trial"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /trials/{id}/resolve:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    patch:
+      tags: [trials]
+      summary: Resolve an expired trial
+      description: |
+        Resolves a trial that has status `expired` via one of two actions:
+
+        - **`convert`**: trial status → `converted`; linked subscription status → `active` (if linked).
+        - **`cancel`**: trial status → `cancelled`; linked subscription status → `cancelled` (if linked, automatically).
+
+        Only trials with status `expired` can be resolved (FR-02.5).
+        Returns 400 if the trial is not in `expired` status.
+      operationId: resolveTrial
+      x-requirements: [FR-02.5]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrialResolution"
+            example:
+              action: "convert"
+      responses:
+        "200":
+          description: Trial resolved; updated trial returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trial"
+        "400":
+          description: Trial is not in `expired` status or action is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # BILLING EVENTS
+  # ────────────────────────────────────────────────────────────────────────────
+  /billing-events:
+
+    get:
+      tags: [billing]
+      summary: List all billing history entries
+      description: |
+        Returns all confirmed billing events across all subscriptions.
+        Sorted by `dateConfirmed` descending by default (FR-03.5).
+        Supports filtering by subscription ID and payment status.
+      operationId: listBillingEvents
+      x-requirements: [FR-03.4, FR-03.5]
+      parameters:
+        - name: subscriptionId
+          in: query
+          description: Filter by subscription UUID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: paymentStatus
+          in: query
+          description: Filter by payment outcome
+          required: false
+          schema:
+            type: string
+            enum: [paid, skipped]
+        - name: sort
+          in: query
+          description: Sort direction by `dateConfirmed`
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        "200":
+          description: Billing events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillingEvent"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [billing]
+      summary: Confirm a billing event
+      description: |
+        Records a manual billing confirmation for a subscription (FR-03.2).
+
+        Server-side effects upon confirmation:
+        1. An **immutable** billing history entry is created (NFR-03).
+        2. The subscription's `nextBillingDate` is recalculated:
+           `nextBillingDate = dateConfirmed + billingInterval` (FR-01.4).
+        3. The billing due badge is cleared on the subscription.
+
+        Returns `400` if the subscription is not `active`, not yet due,
+        or has already been confirmed for the current cycle.
+        Returns `400` if `dateConfirmed` is in the future.
+      operationId: confirmBillingEvent
+      x-requirements: [FR-03.1, FR-03.2, FR-03.3, FR-03.4, FR-01.4]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingEventCreate"
+            example:
+              subscriptionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              paymentStatus: "paid"
+              dateConfirmed: "2026-10-28"
+      responses:
+        "201":
+          description: Billing event confirmed; history entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingEvent"
+        "400":
+          description: |
+            Validation failure — possible causes:
+            - Subscription is not active
+            - No billing event is currently due or overdue
+            - `dateConfirmed` is in the future
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /billing-events/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    get:
+      tags: [billing]
+      summary: Get a billing event by ID
+      description: |
+        Returns a single immutable billing history entry (NFR-03).
+        Billing events cannot be edited or deleted after creation (FR-03.5).
+      operationId: getBillingEvent
+      x-requirements: [FR-03.4, FR-03.5, NFR-03]
+      responses:
+        "200":
+          description: Billing event found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingEvent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ANALYTICS
+  # ────────────────────────────────────────────────────────────────────────────
+  /analytics/summary:
+
+    get:
+      tags: [analytics]
+      summary: Get spend analytics summary
+      description: |
+        Returns computed total monthly and annual spend estimates across all
+        **active** subscriptions (FR-04.3).
+
+        Calculation formulas (FR-01.5, FR-04.1, FR-04.2):
+        - `annualSpend` per item = `(cost ÷ intervalInDays) × 365`
+          - `monthly` → intervalInDays = 30
+          - `annual`  → intervalInDays = 365
+          - `custom N days`   → intervalInDays = N
+          - `custom N months` → intervalInDays = N × 30
+        - `totalAnnualSpend` = Σ annualSpend (active only)
+        - `totalMonthlySpend` = totalAnnualSpend ÷ 12
+
+        Cancelled subscriptions and free trials are excluded.
+        Currency is always UAH.
+      operationId: getAnalyticsSummary
+      x-requirements: [FR-04.1, FR-04.2, FR-04.3, FR-01.5]
+      responses:
+        "200":
+          description: Analytics summary calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+              example:
+                totalMonthlySpend: 1098.00
+                totalAnnualSpend: 13176.00
+                currency: "UAH"
+                activeSubscriptionCount: 3
+                calculatedAt: "2026-10-28T18:00:00Z"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # NOTIFICATIONS
+  # ────────────────────────────────────────────────────────────────────────────
+  /notifications:
+
+    get:
+      tags: [notifications]
+      summary: List notifications
+      description: |
+        Returns all active (non-dismissed) notifications by default (FR-05.4).
+        Notifications are sorted by priority (`TRIAL_EXPIRY` first, then
+        `STARTUP_SUMMARY`, then `RENEWAL`) then by `createdAt` descending.
+
+        Pass `dismissed=true` to include dismissed notifications.
+
+        Notification trigger conditions (FR-05.7):
+        - `RENEWAL`:       `(nextBillingDate − today) ≤ renewalLeadTime`
+        - `TRIAL_EXPIRY`:  `(trialEndDate − today) ≤ trialLeadTime` [high priority]
+        - `STARTUP_SUMMARY`: Generated by `POST /system/startup-check`
+      operationId: listNotifications
+      x-requirements: [FR-05.4, FR-05.5, FR-05.6, FR-05.7]
+      parameters:
+        - name: type
+          in: query
+          description: Filter by notification type
+          required: false
+          schema:
+            type: string
+            enum: [RENEWAL, TRIAL_EXPIRY, STARTUP_SUMMARY]
+        - name: dismissed
+          in: query
+          description: Include dismissed notifications (default false)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /notifications/{id}/dismiss:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+
+    patch:
+      tags: [notifications]
+      summary: Dismiss a notification
+      description: |
+        Marks a notification as dismissed (FR-05.5). Dismissed notifications
+        will not appear in the default `GET /notifications` response.
+        A notification will reappear only if a new trigger condition is met.
+      operationId: dismissNotification
+      x-requirements: [FR-05.5]
+      responses:
+        "200":
+          description: Notification dismissed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Notification is already dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # SETTINGS
+  # ────────────────────────────────────────────────────────────────────────────
+  /settings:
+
+    get:
+      tags: [settings]
+      summary: Get global notification settings
+      description: |
+        Returns the current global default notification lead-time values
+        for renewal and trial expiry events (FR-05.1, FR-05.2).
+        Default values are 3 days each.
+      operationId: getSettings
+      x-requirements: [FR-05.1, FR-05.2]
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags: [settings]
+      summary: Update global notification settings
+      description: |
+        Updates the global default notification lead-times (FR-05.1, FR-05.2).
+        Per-item overrides on subscriptions/trials take precedence over
+        these global defaults (FR-05.3).
+      operationId: updateSettings
+      x-requirements: [FR-05.1, FR-05.2, FR-05.3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+            example:
+              renewalLeadTimeDays: 5
+              trialLeadTimeDays: 7
+      responses:
+        "200":
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # SYSTEM
+  # ────────────────────────────────────────────────────────────────────────────
+  /system/startup-check:
+
+    post:
+      tags: [system]
+      summary: Run application startup check
+      description: |
+        Executes the startup check routine on every application load (FR-05.6):
+
+        1. Evaluates all `active` trials — marks `expired` if `today > endDate` (FR-02.4).
+        2. Detects all active subscriptions with overdue billing events (FR-03.3).
+        3. Evaluates notification trigger conditions for all items (FR-05.7).
+        4. Generates `STARTUP_SUMMARY` notifications for any events missed since
+           last application load (FR-05.6).
+
+        Returns a summary of all detected events. The client should display
+        a persistent startup summary banner if the result is non-empty.
+      operationId: runStartupCheck
+      x-requirements: [FR-02.4, FR-03.3, FR-05.6, FR-05.7]
+      responses:
+        "200":
+          description: Startup check completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartupCheckResult"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /system/export:
+
+    get:
+      tags: [system]
+      summary: Export all application data as JSON
+      description: |
+        Serializes and returns all application data as a single structured
+        JSON object (FR-06.2). The response includes subscriptions, trials,
+        billing events, notifications, and settings.
+
+        The export format is versioned for forward-compatibility (NFR-06).
+        Clients should offer this as a downloadable `.json` file.
+      operationId: exportData
+      x-requirements: [FR-06.2, NFR-06]
+      responses:
+        "200":
+          description: Complete data export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataExport"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /system/import:
+
+    post:
+      tags: [system]
+      summary: Import application data from JSON backup
+      description: |
+        Replaces **all** current application data with the data provided
+        in the request body (FR-06.3).
+
+        Server-side behaviour:
+        1. Validates the JSON structure and schema version (NFR-05).
+        2. If validation passes and the client has confirmed intent (FR-06.4),
+           replaces all existing data atomically.
+        3. Returns an error `400` if the schema is invalid without modifying data.
+
+        **Warning:** This operation is destructive and cannot be undone.
+        The client UI must display a confirmation dialog before calling this
+        endpoint (FR-06.4).
+      operationId: importData
+      x-requirements: [FR-06.3, FR-06.4, NFR-05, NFR-06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataExport"
+      responses:
+        "200":
+          description: Data imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, importedAt]
+                properties:
+                  message:
+                    type: string
+                    example: "Data imported successfully. All previous records replaced."
+                  importedAt:
+                    type: string
+                    format: date-time
+        "400":
+          description: Invalid or incompatible import file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+components:
+
+  # ── Parameters ──────────────────────────────────────────────────────────────
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      description: Unique resource identifier (UUID v4)
+      schema:
+        type: string
+        format: uuid
+        example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+  # ── Reusable Responses ───────────────────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: "400 Bad Request — validation or business rule failure"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: "404 Not Found — resource does not exist"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalServerError:
+      description: "500 Internal Server Error — unexpected failure"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  # ── Schemas ──────────────────────────────────────────────────────────────────
+  schemas:
+
+    # ── Subscription ──────────────────────────────────────────────────────────
+    Subscription:
+      type: object
+      description: |
+        A recurring paid digital service agreement.
+        SRS entity: Subscription | FR-01.x
+      required:
+        - id
+        - serviceName
+        - cost
+        - billingIntervalType
+        - firstBillingDate
+        - nextBillingDate
+        - status
+        - annualSpendEstimate
+        - monthlySpendEstimate
+        - isBillingDue
+        - isOverdue
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        serviceName:
+          type: string
+          example: "Netflix"
+        cost:
+          type: number
+          format: double
+          description: Recurring cost in UAH per billing interval
+          minimum: 0
+          example: 199.00
+        billingIntervalType:
+          type: string
+          enum: [monthly, annual, custom]
+          description: |
+            - `monthly` → adds 1 calendar month
+            - `annual`  → adds 1 calendar year
+            - `custom`  → adds `customIntervalValue` `customIntervalUnit`
+        customIntervalValue:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Required when `billingIntervalType` is `custom`
+          example: 90
+        customIntervalUnit:
+          type: string
+          enum: [days, months]
+          nullable: true
+          description: Required when `billingIntervalType` is `custom`
+          example: "days"
+        firstBillingDate:
+          type: string
+          format: date
+          example: "2026-10-01"
+        nextBillingDate:
+          type: string
+          format: date
+          readOnly: true
+          description: "Server-calculated: lastConfirmedDate + billingInterval (FR-01.4)"
+          example: "2026-11-01"
+        status:
+          type: string
+          enum: [active, cancelled]
+          default: active
+        annualSpendEstimate:
+          type: number
+          format: double
+          readOnly: true
+          description: "(cost ÷ intervalInDays) × 365 (FR-01.5)"
+          example: 2388.00
+        monthlySpendEstimate:
+          type: number
+          format: double
+          readOnly: true
+          description: "annualSpendEstimate ÷ 12 (FR-04.1)"
+          example: 199.00
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            Per-item renewal notification lead-time override (FR-05.3).
+            `null` means use the global default from Settings.
+          example: 7
+        isBillingDue:
+          type: boolean
+          readOnly: true
+          description: "True if today >= nextBillingDate and status is active (FR-03.1)"
+          example: false
+        isOverdue:
+          type: boolean
+          readOnly: true
+          description: "True if billing date has passed without user confirmation (FR-03.3)"
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SubscriptionCreate:
+      type: object
+      description: Request body for creating a new subscription
+      required:
+        - serviceName
+        - cost
+        - billingIntervalType
+        - firstBillingDate
+      properties:
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Netflix"
+        cost:
+          type: number
+          format: double
+          minimum: 0
+          description: Cost in UAH
+          example: 199.00
+        billingIntervalType:
+          type: string
+          enum: [monthly, annual, custom]
+        customIntervalValue:
+          type: integer
+          minimum: 1
+          nullable: true
+          example: 90
+        customIntervalUnit:
+          type: string
+          enum: [days, months]
+          nullable: true
+          example: "days"
+        firstBillingDate:
+          type: string
+          format: date
+          example: "2026-10-01"
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          example: 7
+
+    SubscriptionUpdate:
+      type: object
+      description: Request body for updating an existing subscription (all fields optional)
+      properties:
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        cost:
+          type: number
+          format: double
+          minimum: 0
+        billingIntervalType:
+          type: string
+          enum: [monthly, annual, custom]
+        customIntervalValue:
+          type: integer
+          minimum: 1
+          nullable: true
+        customIntervalUnit:
+          type: string
+          enum: [days, months]
+          nullable: true
+        firstBillingDate:
+          type: string
+          format: date
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    # ── Trial ─────────────────────────────────────────────────────────────────
+    Trial:
+      type: object
+      description: |
+        A free promotional access period to a digital service.
+        SRS entity: Free Trial | FR-02.x
+      required:
+        - id
+        - serviceName
+        - startDate
+        - endDate
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "7ab12c34-5678-4def-9012-ab34cd56ef78"
+        serviceName:
+          type: string
+          example: "Adobe CC"
+        startDate:
+          type: string
+          format: date
+          example: "2026-09-21"
+        endDate:
+          type: string
+          format: date
+          example: "2026-12-21"
+        status:
+          type: string
+          enum: [active, expired, converted, cancelled]
+          default: active
+          description: |
+            Lifecycle: active → expired → converted | cancelled
+            Status transitions are server-controlled:
+            - `expired` is set automatically by startup-check (FR-02.4)
+            - `converted`/`cancelled` are set via PATCH /trials/{id}/resolve (FR-02.5)
+        linkedSubscriptionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional reference to a linked paid subscription (FR-02.1, FR-02.2)
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            Per-item trial expiry notification lead-time override (FR-05.3).
+            `null` means use the global default from Settings.
+          example: 5
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    TrialCreate:
+      type: object
+      description: Request body for creating a new free trial
+      required:
+        - serviceName
+        - startDate
+        - endDate
+      properties:
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Adobe CC"
+        startDate:
+          type: string
+          format: date
+          example: "2026-09-21"
+        endDate:
+          type: string
+          format: date
+          example: "2026-12-21"
+        linkedSubscriptionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional. ID of an existing subscription that will be activated
+            upon conversion. If null, trial is standalone (FR-02.2).
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          example: 5
+
+    TrialUpdate:
+      type: object
+      description: Request body for updating a free trial (all fields optional; status excluded)
+      properties:
+        serviceName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        linkedSubscriptionId:
+          type: string
+          format: uuid
+          nullable: true
+        notificationLeadTimeDays:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    TrialResolution:
+      type: object
+      description: Request body for resolving an expired trial
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [convert, cancel]
+          description: |
+            - `convert`: trial → `converted`; linked subscription → `active` (FR-02.5)
+            - `cancel`:  trial → `cancelled`; linked subscription → `cancelled` if linked (FR-02.5)
+
+    # ── Billing Event ─────────────────────────────────────────────────────────
+    BillingEvent:
+      type: object
+      description: |
+        An immutable billing history record created upon payment confirmation.
+        SRS entity: Billing Event | FR-03.x, NFR-03
+      required:
+        - id
+        - subscriptionId
+        - subscriptionName
+        - amount
+        - dateConfirmed
+        - paymentStatus
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+        subscriptionId:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        subscriptionName:
+          type: string
+          description: Denormalized name at time of confirmation
+          example: "Netflix"
+        amount:
+          type: number
+          format: double
+          description: Cost in UAH at the time of confirmation
+          example: 199.00
+        dateConfirmed:
+          type: string
+          format: date
+          example: "2026-10-28"
+        paymentStatus:
+          type: string
+          enum: [paid, skipped]
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    BillingEventCreate:
+      type: object
+      description: Request body for confirming a billing event
+      required:
+        - subscriptionId
+        - paymentStatus
+        - dateConfirmed
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        paymentStatus:
+          type: string
+          enum: [paid, skipped]
+        dateConfirmed:
+          type: string
+          format: date
+          description: "Confirmation date; typically today. Cannot be a future date."
+          example: "2026-10-28"
+
+    # ── Notification ──────────────────────────────────────────────────────────
+    Notification:
+      type: object
+      description: |
+        An in-app alert for an upcoming or missed event.
+        SRS entity: Notification | FR-05.x
+      required:
+        - id
+        - type
+        - message
+        - priority
+        - isDismissed
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum: [RENEWAL, TRIAL_EXPIRY, STARTUP_SUMMARY]
+          description: |
+            - `RENEWAL`: renewal lead-time threshold reached (FR-05.7)
+            - `TRIAL_EXPIRY`: trial lead-time threshold reached — high priority (FR-05.7, FR-02.6)
+            - `STARTUP_SUMMARY`: generated by startup-check for missed events (FR-05.6)
+        referenceId:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of the related Subscription or Trial
+        referenceType:
+          type: string
+          enum: [subscription, trial]
+          nullable: true
+        message:
+          type: string
+          example: "Netflix renewal is due in 3 days (2026-10-31)."
+        priority:
+          type: string
+          enum: [standard, high]
+          readOnly: true
+          description: |
+            `TRIAL_EXPIRY` and `STARTUP_SUMMARY` → `high` (warning styling)
+            `RENEWAL` → `standard` (FR-05.7)
+        isDismissed:
+          type: boolean
+          default: false
+        dismissedAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # ── Settings ──────────────────────────────────────────────────────────────
+    Settings:
+      type: object
+      description: |
+        Global application notification lead-time settings.
+        SRS: FR-05.1, FR-05.2
+      required:
+        - renewalLeadTimeDays
+        - trialLeadTimeDays
+      properties:
+        renewalLeadTimeDays:
+          type: integer
+          minimum: 1
+          default: 3
+          description: "Global default lead-time (days) for RENEWAL notifications (FR-05.1)"
+          example: 3
+        trialLeadTimeDays:
+          type: integer
+          minimum: 1
+          default: 3
+          description: "Global default lead-time (days) for TRIAL_EXPIRY notifications (FR-05.2)"
+          example: 3
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SettingsUpdate:
+      type: object
+      description: Request body for updating global settings (all fields optional)
+      properties:
+        renewalLeadTimeDays:
+          type: integer
+          minimum: 1
+          example: 5
+        trialLeadTimeDays:
+          type: integer
+          minimum: 1
+          example: 7
+
+    # ── Analytics ─────────────────────────────────────────────────────────────
+    AnalyticsSummary:
+      type: object
+      description: |
+        Server-computed spend analytics across all active subscriptions.
+        SRS: FR-04.1, FR-04.2, FR-04.3
+      required:
+        - totalMonthlySpend
+        - totalAnnualSpend
+        - currency
+        - activeSubscriptionCount
+        - calculatedAt
+      properties:
+        totalMonthlySpend:
+          type: number
+          format: double
+          description: "Σ (annualSpendEstimate ÷ 12) — active subscriptions only"
+          example: 1098.00
+        totalAnnualSpend:
+          type: number
+          format: double
+          description: "Σ annualSpendEstimate — active subscriptions only"
+          example: 13176.00
+        currency:
+          type: string
+          enum: [UAH]
+          default: "UAH"
+          description: Fixed currency — always UAH per system constraints
+        activeSubscriptionCount:
+          type: integer
+          description: Number of active subscriptions included in the calculation
+          example: 3
+        calculatedAt:
+          type: string
+          format: date-time
+          description: Server timestamp at time of calculation
+
+    # ── System ────────────────────────────────────────────────────────────────
+    StartupCheckResult:
+      type: object
+      description: |
+        Result of the POST /system/startup-check operation.
+        SRS: FR-02.4, FR-03.3, FR-05.6
+      required:
+        - newlyExpiredTrials
+        - overdueSubscriptions
+        - notificationsGenerated
+        - checkedAt
+      properties:
+        newlyExpiredTrials:
+          type: array
+          description: Trials that were transitioned to `expired` during this check
+          items:
+            $ref: "#/components/schemas/Trial"
+        overdueSubscriptions:
+          type: array
+          description: Active subscriptions with overdue billing events
+          items:
+            $ref: "#/components/schemas/Subscription"
+        notificationsGenerated:
+          type: integer
+          description: Number of new STARTUP_SUMMARY notifications created
+          example: 2
+        checkedAt:
+          type: string
+          format: date-time
+
+    DataExport:
+      type: object
+      description: |
+        Complete serialized application state for export/import.
+        SRS: FR-06.2, FR-06.3, NFR-06
+      required:
+        - version
+        - exportedAt
+        - subscriptions
+        - trials
+        - billingEvents
+        - notifications
+        - settings
+      properties:
+        version:
+          type: string
+          description: Export schema version — used for import compatibility check
+          example: "1.0.0"
+        exportedAt:
+          type: string
+          format: date-time
+        subscriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subscription"
+        trials:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trial"
+        billingEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingEvent"
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        settings:
+          $ref: "#/components/schemas/Settings"
+
+    # ── Unified Error Model ───────────────────────────────────────────────────
+    Error:
+      type: object
+      description: |
+        Unified error response model returned for all 4xx and 5xx responses.
+        `code` is machine-readable; `message` is human-readable.
+      required:
+        - code
+        - message
+        - timestamp
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "RESOURCE_NOT_FOUND"
+          enum:
+            - VALIDATION_ERROR
+            - RESOURCE_NOT_FOUND
+            - RESOURCE_CONFLICT
+            - INVALID_STATUS_TRANSITION
+            - INVALID_IMPORT_SCHEMA
+            - BILLING_NOT_DUE
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error description
+          example: "Subscription with ID 3fa85f64-5717-4562-b3fc-2c963f66afa6 was not found."
+        details:
+          type: array
+          description: Optional list of field-level validation errors
+          items:
+            type: string
+          example:
+            - "Field 'cost' must be a positive number."
+            - "Field 'billingIntervalType' must be one of: monthly, annual, custom."
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
