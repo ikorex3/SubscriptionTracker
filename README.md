@@ -88,14 +88,31 @@ Represents a single payment transaction associated with a subscription.
 
 ```
 lab1/
-├── src/          # Application source code
-├── spec/         # System specifications and concept documents
-│   └── Concept.md        # Formal domain and use-case specification
-├── docs/         # Additional project documentation
-├── tests/        # Automated test suites
-├── logs/         # Development and agent activity logs
-│   └── AiAgent.md        # AI coding agent profile and capabilities log
-└── README.md     # This file
+├── src/                  # Application source code
+│   ├── domain/           # Core calculations, store, and validation logic
+│   ├── routes/           # Modular HTTP REST API route handlers
+│   ├── utils/            # Lightweight router and request/action logger
+│   ├── app.js            # App factory and HTTP request dispatcher
+│   └── server.js         # HTTP server startup entry point
+├── spec/                 # System specifications and concept documents
+│   ├── Concept.md        # Formal domain and use-case specification
+│   ├── SRS.md            # Software Requirements Specification (v1.0)
+│   └── SRS_Addendum.md   # Client-Server REST API architecture addendum
+├── docs/                 # Documentation & Verification Guides
+│   ├── API_Verification_Guide.md # Contract testing scenarios
+│   ├── BDD_Scenarios.md          # Acceptance test scenarios
+│   ├── Task_Decomposition.md     # Phase and ticket breakdown
+│   └── Traceability_Matrix.md    # Requirements traceability matrix
+├── tests/                # Automated unit and contract test suites
+│   ├── unit.test.js      # Domain calculations unit tests
+│   ├── logger.test.js    # Request & action logging tests
+│   └── contract.test.js  # OpenAPI 3.0.3 contract tests (P-01..P-13, N-01..N-08)
+├── logs/                 # Activity, verification, and gate logs
+│   ├── AiAgent.md        # AI coding agent profile
+│   ├── SpecGate.md       # SPEC-GATE review log
+│   └── TestGate.md       # TEST-GATE review log
+├── openapi.yaml          # Formal OpenAPI 3.0.3 contract specification
+└── README.md             # This file
 ```
 
 ---
@@ -124,10 +141,17 @@ The agent supports the following operations:
 
 ## Getting Started
 
-> **Note:** The `src/` directory is currently empty. Implementation will be added as the project develops.
+### Prerequisites
+- Node.js (v18+ or v25+)
 
-1. **Clone the repository** and open it in your preferred editor or IDE.
-2. Review the system concept in [`spec/Concept.md`](spec/Concept.md) to understand the full domain model.
-3. Follow the project's specification to implement the core entities: `Subscription`, `TrialPeriod`, and `BillingEvent`.
-4. Place all application source files under `src/` and corresponding test files under `tests/`.
-5. Update this README and `docs/` as new features are implemented.
+### Running the REST API Server
+```bash
+# Start the server on port 4010 (or PORT env variable)
+node src/server.js
+```
+
+### Running Automated Test Suites (TDD Verification)
+```bash
+# Run unit and contract test suites with Node.js built-in test runner
+node --test tests/unit.test.js tests/logger.test.js tests/contract.test.js
+```

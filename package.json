@@ -1,0 +1,19 @@
+{
+  "name": "subscription-tracker",
+  "version": "1.0.0",
+  "description": "Subscription Tracker REST API - Lab Work",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "subscription-tracker",
+    "rest-api",
+    "openapi"
+  ],
+  "author": "Subscription Tracker Team",
+  "license": "MIT"
+}
+
