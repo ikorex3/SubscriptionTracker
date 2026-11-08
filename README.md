@@ -153,5 +153,5 @@ node src/server.js
 ### Running Automated Test Suites (TDD Verification)
 ```bash
 # Run unit and contract test suites with Node.js built-in test runner
-node --test tests/unit.test.js tests/logger.test.js tests/contract.test.js
+node --test tests/unit.test.js tests/logger.test.js tests/contract.test.js tests/addendum.test.js
 ```

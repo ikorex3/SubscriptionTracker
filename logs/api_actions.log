@@ -1,0 +1,3 @@
+{"timestamp":"2026-11-08T18:55:34.713Z","action":"CREATE_SUBSCRIPTION","entity":"Subscription","details":{"id":"7ac0f5ff-b3cd-4d97-9bf4-7f4b924ff506","serviceName":"Netflix"}}
+{"timestamp":"2026-11-08T19:06:47.544Z","action":"CREATE_SUBSCRIPTION","entity":"Subscription","details":{"id":"8d6d5c21-412b-4f79-92d1-16bbfe4e9ee5","serviceName":"Youtube"}}
+{"timestamp":"2026-11-08T19:13:30.233Z","action":"CANCEL_SUBSCRIPTION","entity":"Subscription","details":{"id":"8d6d5c21-412b-4f79-92d1-16bbfe4e9ee5"}}

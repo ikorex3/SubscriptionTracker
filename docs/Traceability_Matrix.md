@@ -113,7 +113,7 @@ This section establishes a bidirectional relationship between the SRS requiremen
 
 | HTTP Method | API Endpoint | Operation ID | Operation Purpose | Covered Requirements (REQ-ID) |
 |-------------|--------------|--------------|-------------------|-------------------------------|
-| `GET` | `/subscriptions` | `listSubscriptions` | Retrieve a list of all subscriptions (optional status filtering) | **FR-01.1**, **FR-01.3**, **FR-04.3** |
+| `GET` | `/subscriptions` | `listSubscriptions` | Retrieve subscriptions, optionally filtered by `status` = `active` \| `cancelled` \| `all` (CHG-01, default `all`; invalid value → 400) | **FR-01.1**, **FR-01.3**, **FR-04.3**, **CHG-01** |
 | `POST` | `/subscriptions` | `createSubscription` | Create a new subscription with auto-calculation of dates and spend | **FR-01.1**, **FR-01.4**, **FR-01.5** |
 | `GET` | `/subscriptions/{id}` | `getSubscription` | Retrieve detailed subscription information by UUID | **FR-01.1**, **FR-01.2** |
 | `PUT` | `/subscriptions/{id}` | `updateSubscription` | Update subscription fields with automatic date/spend recalculation | **FR-01.2**, **FR-01.4**, **FR-01.5** |
@@ -208,4 +208,6 @@ This section establishes a bidirectional relationship between the SRS requiremen
 | **TSK-05 (PLAN-GATE)** | Task Decomposition v1.0 reviewed; implementation authorized | 2026-10-15 | ✅ GO | Human |
 | **API-GATE** | OpenAPI 3.0.3 specification reviewed & approved | 2026-10-28 | ✅ GO | Human |
 | **TEST-GATE** | TDD Unit & Contract test suites verified (34/34 pass) | 2026-10-31 | ✅ GO | Human |
+| **SPEC-ADDENDUM-GATE** | CHG-01 status filter for `GET /subscriptions` approved (`spec/SPEC_ADDENDUM.md`) | 2026-11-08 | ✅ GO | Human |
+| **ADDENDUM TEST-GATE** | CHG-01 Red → Green verified; 58/58 pass, 0 regressions (`logs/Addendum_TestGate.md`) | 2026-11-08 | ✅ GO | Human |
 | **TSK-69 (RELEASE-GATE)** | Final acceptance pending implementation | TBD | ⏳ Pending | Human |

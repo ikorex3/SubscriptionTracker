@@ -70,18 +70,26 @@ paths:
       tags: [subscriptions]
       summary: List all subscriptions
       description: |
-        Returns all subscription records. Optionally filter by `status`.
-        Cancelled subscriptions are included (retained with badge per FR-01.3).
+        Returns subscription records. Optionally filter by `status`
+        (feature change CHG-01, see `spec/SPEC_ADDENDUM.md`):
+        - `active`    — only active subscriptions
+        - `cancelled` — only cancelled subscriptions
+        - `all`       — every subscription (default when omitted)
+
+        Cancelled subscriptions are retained with badge per FR-01.3.
+        Any other `status` value is rejected with `400 VALIDATION_ERROR`.
+        An empty match returns `200` with an empty array.
       operationId: listSubscriptions
       x-requirements: [FR-01.1, FR-01.3, FR-04.3]
       parameters:
         - name: status
           in: query
-          description: Filter subscriptions by status
+          description: Filter subscriptions by status (`all` returns every subscription)
           required: false
           schema:
             type: string
-            enum: [active, cancelled]
+            enum: [active, cancelled, all]
+            default: all
       responses:
         "200":
           description: Subscriptions retrieved successfully
@@ -91,6 +99,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Invalid `status` query value (not one of active, cancelled, all)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
 

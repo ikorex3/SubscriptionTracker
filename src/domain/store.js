@@ -33,7 +33,7 @@ export class Store {
 
   listSubscriptions(filterStatus) {
     const list = Array.from(this.subscriptions.values());
-    if (filterStatus) {
+    if (filterStatus && filterStatus !== 'all') {
       return list.filter((s) => s.status === filterStatus);
     }
     return list;

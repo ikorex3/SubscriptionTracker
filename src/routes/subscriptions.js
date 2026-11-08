@@ -1,11 +1,14 @@
-import { validateSubscriptionCreate } from '../domain/validation.js';
+import { validateSubscriptionCreate, validateSubscriptionStatusFilter } from '../domain/validation.js';
 
 export function registerSubscriptionRoutes(router, { store, logger, sendJson, sendError, parseBody }) {
-  // GET /subscriptions
+  // GET /subscriptions?status=active|cancelled|all (CHG-01)
   router.get('/subscriptions', (req, res, { urlObj }) => {
-    const status = urlObj.searchParams.get('status') || undefined;
-    const list = store.listSubscriptions(status);
-    return sendJson(res, 200, list);
+    const status = urlObj.searchParams.has('status') ? urlObj.searchParams.get('status') : undefined;
+    const errors = validateSubscriptionStatusFilter(status);
+    if (errors.length > 0) {
+      return sendError(res, 400, 'VALIDATION_ERROR', errors[0], errors);
+    }
+    return sendJson(res, 200, store.listSubscriptions(status));
   });
 
   // POST /subscriptions

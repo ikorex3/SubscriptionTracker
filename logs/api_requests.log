@@ -1,0 +1,16 @@
+{"timestamp":"2026-11-08T18:55:34.717Z","method":"POST","url":"/subscriptions","statusCode":201,"durationMs":4.66,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T18:57:18.585Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.6,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:06:47.545Z","method":"POST","url":"/subscriptions","statusCode":201,"durationMs":1.02,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:06:51.711Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.31,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:11:49.484Z","method":"GET","url":"/subscriptions/3fa85f64-5717-4562-b3fc-2c963f66afa6","statusCode":404,"durationMs":0.66,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:12:12.792Z","method":"GET","url":"/subscriptions/8d6d5c21-412b-4f79-92d1-16bbfe4e9ee5","statusCode":200,"durationMs":0.36,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:13:30.234Z","method":"DELETE","url":"/subscriptions/8d6d5c21-412b-4f79-92d1-16bbfe4e9ee5","statusCode":200,"durationMs":0.82,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:13:45.455Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.29,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:13:51.061Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.37,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:13:59.421Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.28,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:15:20.638Z","method":"GET","url":"/subscriptions/8d6d5c21-412b-4f79-92d1-16bbfe4e9ee5/billing-events","statusCode":200,"durationMs":0.34,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:15:49.153Z","method":"GET","url":"/analytics/summary","statusCode":200,"durationMs":0.61,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:15:59.927Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.24,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:16:55.407Z","method":"GET","url":"/notifications","statusCode":200,"durationMs":0.47,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:17:10.305Z","method":"GET","url":"/settings","statusCode":200,"durationMs":0.38,"ip":"127.0.0.1"}
+{"timestamp":"2026-11-08T19:18:30.704Z","method":"GET","url":"/subscriptions","statusCode":200,"durationMs":0.23,"ip":"127.0.0.1"}

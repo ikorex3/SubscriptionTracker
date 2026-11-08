@@ -45,6 +45,20 @@ export function validateSubscriptionCreate(body) {
   return errors;
 }
 
+export const SUBSCRIPTION_STATUS_FILTERS = ['active', 'cancelled', 'all'];
+
+/**
+ * Validates the optional `status` query value of GET /subscriptions (CHG-01).
+ * `undefined` means the parameter was omitted and is valid.
+ */
+export function validateSubscriptionStatusFilter(value) {
+  if (value === undefined) return [];
+  if (!SUBSCRIPTION_STATUS_FILTERS.includes(value)) {
+    return [`Query parameter 'status' must be one of: ${SUBSCRIPTION_STATUS_FILTERS.join(', ')}.`];
+  }
+  return [];
+}
+
 export function validateTrialCreate(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {
