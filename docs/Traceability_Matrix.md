@@ -1,5 +1,8 @@
 # Requirements Traceability Matrix — Subscription Tracker
-### Version 2.1 | October 2026
+### Version 2.2 | November 2026
+
+> **v2.2 change:** Added **Part 8 — End-to-End Traceability** (SRS requirement → OpenAPI endpoint → addendum CHG-01 →
+> test identifiers → implementation files) and the final gate records. See [`logs/Final_Gate_Review.md`](../logs/Final_Gate_Review.md).
 
 > **v2.1 change:** Added **Part 3 — REST API Endpoints Traceability Mapping**, establishing direct bidirectional links
 > between SRS requirements (`REQ-ID`) and REST API operations from [`openapi.yaml`](../openapi.yaml)
@@ -210,4 +213,100 @@ This section establishes a bidirectional relationship between the SRS requiremen
 | **TEST-GATE** | TDD Unit & Contract test suites verified (34/34 pass) | 2026-10-31 | ✅ GO | Human |
 | **SPEC-ADDENDUM-GATE** | CHG-01 status filter for `GET /subscriptions` approved (`spec/SPEC_ADDENDUM.md`) | 2026-11-08 | ✅ GO | Human |
 | **ADDENDUM TEST-GATE** | CHG-01 Red → Green verified; 58/58 pass, 0 regressions (`logs/Addendum_TestGate.md`) | 2026-11-08 | ✅ GO | Human |
+| **FINAL GATE** | Final project evaluation: automated, human (Postman) and audit-log verification (`logs/Final_Gate_Review.md`) | 2026-11-08 | ✅ GO | Human |
 | **TSK-69 (RELEASE-GATE)** | Final acceptance pending implementation | TBD | ⏳ Pending | Human |
+
+
+---
+
+## Part 8 — End-to-End Traceability
+
+Chain: **SRS requirement → OpenAPI endpoint → addendum (CHG-01) → test identifier → implementation file.**
+Sources: `spec/SRS.md`, `openapi.yaml` (`x-requirements`), `spec/SPEC_ADDENDUM.md`, `tests/*.test.js`, `src/**`.
+
+### 8.1 Test Identifier Key
+
+| Prefix | File | Meaning |
+|--------|------|---------|
+| `UT-01`…`UT-08` | `tests/unit.test.js` | Domain calculations: UT-01 monthly date, UT-02 annual date, UT-03 custom days date, UT-04 custom months date, UT-05 monthly spend, UT-06 annual spend, UT-07 custom spend, UT-08 active-only analytics |
+| `LG-01`, `LG-02` | `tests/logger.test.js` | LG-01 request logging, LG-02 business action logging |
+| `P-01`…`P-13` | `tests/contract.test.js` | Positive contract tests (see `docs/API_Verification_Guide.md`) |
+| `N-01`…`N-08` | `tests/contract.test.js` | Negative contract tests |
+| `AD-V` | `tests/addendum.test.js` | CHG-01 validator unit tests (8) |
+| `AD-S` | `tests/addendum.test.js` | CHG-01 store unit tests (4) |
+| `AC-01`…`AC-07` | `tests/addendum.test.js` | CHG-01 contract tests, one per acceptance criterion (AC-05 has 3 cases; AC-08 = all earlier tests still pass) |
+
+### 8.2 Requirement-Level Chain
+
+Coverage legend: ✅ directly tested · 🟡 partially tested / indirect · ➖ not covered by the API test suites.
+Implementation abbreviations: `calc` = `src/domain/calculations.js`, `store` = `src/domain/store.js`, `valid` = `src/domain/validation.js`, `r/<name>` = `src/routes/<name>.js`, `log` = `src/utils/logger.js`.
+
+| REQ-ID | OpenAPI endpoint(s) | Addendum | Test identifiers | Implementation | Cov. |
+|--------|---------------------|----------|------------------|----------------|------|
+| FR-01.1 | `POST /subscriptions`, `GET /subscriptions`, `GET /subscriptions/{id}` | CHG-01 (list filter) | P-01, P-02, P-03, N-01, N-02, N-03, AC-01…AC-07, AD-V, AD-S | `r/subscriptions`, `store`, `valid` | ✅ |
+| FR-01.2 | `PUT /subscriptions/{id}`, `GET /subscriptions/{id}` | — | P-04, N-02 | `r/subscriptions`, `store` | ✅ |
+| FR-01.3 | `DELETE /subscriptions/{id}`, `GET /subscriptions` | CHG-01 (`status=cancelled`, `status=all` keep cancelled records visible) | P-05, N-05, AC-02, AC-03 | `r/subscriptions`, `store` | ✅ |
+| FR-01.4 | `POST /subscriptions`, `PUT /subscriptions/{id}`, `POST /billing-events` | — | UT-01…UT-04, P-01, P-02, P-04, P-08 | `calc`, `store` | ✅ |
+| FR-01.5 | `POST /subscriptions`, `PUT /subscriptions/{id}`, `GET /analytics/summary` | — | UT-05…UT-07, P-01, P-02, P-04, P-09 | `calc`, `store` | ✅ |
+| FR-02.1 | `POST /trials`, `GET /trials`, `GET /trials/{id}`, `PUT /trials/{id}` | — | P-06 | `r/trials`, `store`, `valid` | ✅ |
+| FR-02.2 | `POST /trials`, `GET /trials` | — | P-06 | `r/trials`, `store` | ✅ |
+| FR-02.3 | `POST /subscriptions`, `POST /trials` | — | P-01, P-06 | `r/subscriptions`, `r/trials` | ✅ |
+| FR-02.4 | `POST /system/startup-check` | — | P-07, P-12 | `r/system`, `store.runStartupCheck` | ✅ |
+| FR-02.5 | `PATCH /trials/{id}/resolve` | — | P-07, N-04 | `r/trials`, `store.resolveTrial` | ✅ (convert path; cancel path not covered) |
+| FR-02.6 | `GET /notifications`, `POST /system/startup-check` | — | P-10, P-12 | `store.runStartupCheck` | 🟡 |
+| FR-03.1 | `POST /billing-events` | — | P-08, N-07 | `r/billingEvents`, `store` | 🟡 (due flag set in store; badge itself is UI) |
+| FR-03.2 | `POST /billing-events` | — | P-08, N-07 | `r/billingEvents`, `store.confirmBillingEvent` | ✅ (`paid`; `skipped` not covered) |
+| FR-03.3 | `POST /billing-events`, `POST /system/startup-check` | — | P-12 | `store.runStartupCheck` | 🟡 |
+| FR-03.4 | `POST /billing-events`, `GET /billing-events`, `GET /billing-events/{id}`, `GET /subscriptions/{id}/billing-events` | — | P-08 | `r/billingEvents`, `r/subscriptions`, `store` | ✅ |
+| FR-03.5 | `GET /billing-events`, `GET /billing-events/{id}`, `GET /subscriptions/{id}/billing-events` | — | P-08 | `store.listBillingEvents` | 🟡 (descending order not asserted) |
+| FR-04.1 | `GET /analytics/summary` | — | UT-08, P-09 | `calc`, `r/analytics` | ✅ |
+| FR-04.2 | `GET /analytics/summary` | — | UT-08, P-09 | `calc`, `r/analytics` | ✅ |
+| FR-04.3 | `GET /analytics/summary`, `GET /subscriptions` | CHG-01 (`status=active` view) | UT-08, P-03, AC-01 | `calc`, `store` | ✅ |
+| FR-05.1 | `GET /settings`, `PUT /settings` | — | P-11 | `r/settings`, `store`, `valid` | ✅ |
+| FR-05.2 | `GET /settings`, `PUT /settings` | — | P-11 | `r/settings`, `store`, `valid` | ✅ |
+| FR-05.3 | `PUT /settings`, `POST /subscriptions`, `POST /trials` | — | P-01, P-06, P-11 | `store` | 🟡 |
+| FR-05.4 | `GET /notifications` | — | P-10 | `r/notifications`, `store` | 🟡 |
+| FR-05.5 | `GET /notifications`, `PATCH /notifications/{id}/dismiss` | — | P-10, N-06 | `r/notifications`, `store.dismissNotification` | 🟡 (P-10/N-06 run only if a notification exists) |
+| FR-05.6 | `POST /system/startup-check`, `GET /notifications` | — | P-12 | `r/system`, `store.runStartupCheck` | ✅ |
+| FR-05.7 | `GET /notifications`, `POST /system/startup-check` | — | P-10, P-12 | `store.listNotifications` | 🟡 |
+| FR-06.1 | all resource endpoints | — | all contract tests | `store` | 🟡 (server-side in-memory store; data is not persisted across restarts) |
+| FR-06.2 | `GET /system/export` | — | P-13 | `r/system`, `store.exportData` | ✅ |
+| FR-06.3 | `POST /system/import` | — | P-13, N-08 | `r/system`, `store.importData`, `valid` | ✅ |
+| FR-06.4 | `POST /system/import` | — | P-13 | `r/system` | 🟡 (confirmation dialog is client-side, out of API scope) |
+| NFR-01 | — | — | — | — | ➖ |
+| NFR-02 | — | — | — | — | ➖ |
+| NFR-03 | `GET /billing-events/{id}`, `GET /subscriptions/{id}/billing-events` | — | P-08 | no `PUT`/`DELETE` routes for billing events in `r/billingEvents` | 🟡 (immutability by absence of routes, not asserted by a test) |
+| NFR-04 | — | — | — | — | ➖ |
+| NFR-05 | `POST /system/import` | — | N-08 | `valid.validateImportData` | ✅ |
+| NFR-06 | `GET /system/export`, `POST /system/import` | — | P-13 | `store.exportData`, `store.importData` | ✅ |
+| Audit logging (Addendum 1 / TEST-GATE) | all endpoints | — | LG-01, LG-02 | `log`, `src/app.js` | ✅ |
+
+### 8.3 Addendum CHG-01 Chain
+
+| Element | Reference |
+|---------|-----------|
+| Change ticket | CHG-01 in `spec/SPEC_ADDENDUM.md` (SPEC-ADDENDUM-GATE: GO) |
+| Requirement | Optional `status` query on `GET /subscriptions`: `active`, `cancelled`, `all`; omitted = `all`; other value → `400 VALIDATION_ERROR` |
+| Base requirements | FR-01.1, FR-01.3, FR-04.3 |
+| OpenAPI | `GET /subscriptions` (`listSubscriptions`): enum `[active, cancelled, all]`, default `all`, `400` response |
+| Acceptance criteria → tests | AC-01…AC-07 → `tests/addendum.test.js` (contract); AC-08 → full suite regression |
+| Unit tests | AD-V (`validateSubscriptionStatusFilter`), AD-S (`Store.listSubscriptions`) |
+| Implementation | `src/domain/validation.js` (`validateSubscriptionStatusFilter`), `src/domain/store.js` (`listSubscriptions`), `src/routes/subscriptions.js` (`GET /subscriptions`) |
+| Evidence | `logs/Addendum_TestGate.md` (Red 6 pass / 18 fail → Green 58/58) |
+
+### 8.4 Implementation File Index
+
+| File | Role | Requirements served |
+|------|------|---------------------|
+| `src/domain/calculations.js` | Next billing date, spend estimates, analytics totals | FR-01.4, FR-01.5, FR-04.1–04.3 |
+| `src/domain/store.js` | In-memory state and business rules for all resources | FR-01.x, FR-02.x, FR-03.x, FR-05.x, FR-06.x, NFR-03 |
+| `src/domain/validation.js` | Request and query validation | FR-01.1, FR-02.1, FR-03.2, FR-05.1/05.2, FR-06.3, NFR-05, CHG-01 |
+| `src/routes/subscriptions.js` | `/subscriptions` endpoints | FR-01.1–01.5, CHG-01 |
+| `src/routes/trials.js` | `/trials` endpoints | FR-02.1–02.5 |
+| `src/routes/billingEvents.js` | `/billing-events` endpoints | FR-03.x, NFR-03 |
+| `src/routes/analytics.js` | `/analytics/summary` | FR-04.x |
+| `src/routes/notifications.js` | `/notifications` endpoints | FR-05.4, FR-05.5, FR-05.7 |
+| `src/routes/settings.js` | `/settings` endpoints | FR-05.1–05.3 |
+| `src/routes/system.js` | Startup check, export, import | FR-02.4, FR-03.3, FR-05.6, FR-06.2–06.4 |
+| `src/utils/logger.js` | `api_requests.log`, `api_actions.log` | Audit logging |
+| `src/utils/router.js`, `src/app.js`, `src/server.js` | Routing, request logging hook, server startup | all endpoints |
