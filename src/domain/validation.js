@@ -58,7 +58,7 @@ export function validateSubscriptionCreate(body) {
 
 /**
  * Allowed values for the `status` query parameter on `GET /subscriptions` (CHG-01).
- * @type {readonly string[]}
+ * @type {string[]}
  */
 export const SUBSCRIPTION_STATUS_FILTERS = ['active', 'cancelled', 'all'];
 

@@ -8,7 +8,7 @@
  * - `GET /notifications` (optional `?type=` and `?dismissed=true` filters)
  * - `PATCH /notifications/:id/dismiss` (returns `200`, `404`, or `409 RESOURCE_CONFLICT` if already dismissed)
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`).
  * @returns {void}
  */

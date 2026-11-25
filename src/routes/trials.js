@@ -12,7 +12,7 @@ import { validateTrialCreate } from '../domain/validation.js';
  * - `PUT /trials/:id` (`200`, `400`, or `404`; ignores `status`)
  * - `PATCH /trials/:id/resolve` (`convert` | `cancel` on `'expired'` trials only; returns `200`, `400 INVALID_STATUS_TRANSITION`, or `404`)
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
  * @returns {void}
  */

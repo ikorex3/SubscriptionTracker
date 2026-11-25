@@ -13,10 +13,10 @@ import { validateSubscriptionCreate, validateSubscriptionStatusFilter } from '..
  * - `PUT /subscriptions/:id` (returns `200`, `400`, or `404`)
  * - `DELETE /subscriptions/:id` (soft delete: `status = 'cancelled'`, returns `200`, `404`, or `409`)
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies.
- * @param {import('../domain/store.js').Store} context.store - Domain data store.
- * @param {import('../utils/logger.js').Logger} context.logger - Business action logger.
+ * @param {Store} context.store - Domain data store.
+ * @param {Logger} context.logger - Business action logger.
  * @param {Function} context.sendJson - JSON response helper `(res, statusCode, payload) => void`.
  * @param {Function} context.sendError - Error response helper `(res, statusCode, code, message, details) => void`.
  * @param {Function} context.parseBody - Async JSON body parser `(req) => Promise<object>`.

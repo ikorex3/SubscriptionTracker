@@ -11,7 +11,7 @@ import { validateBillingEventCreate } from '../domain/validation.js';
  * - `POST /billing-events` (confirms a due/overdue payment; returns `201`, `400 BILLING_NOT_DUE` / `VALIDATION_ERROR`, or `404`)
  * - `GET /billing-events/:id` (`200` or `404`)
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
  * @returns {void}
  */

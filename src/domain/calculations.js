@@ -90,7 +90,7 @@ export function calculateSpendEstimates(cost, intervalType, customValue = 0, cus
  * Aggregates total monthly and annual spend across active subscriptions only.
  * Cancelled subscriptions are excluded from totals (FR-04.1, FR-04.2, FR-04.3).
  *
- * @param {Array<{ status: string, annualSpendEstimate?: number }>} [subscriptions=[]] - Subscription records to aggregate.
+ * @param {Array.<object>} [subscriptions=[]] - Subscription records to aggregate (`status`, optional `annualSpendEstimate`).
  * @returns {{
  *   totalMonthlySpend: number,
  *   totalAnnualSpend: number,

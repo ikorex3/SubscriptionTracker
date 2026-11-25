@@ -9,7 +9,7 @@ import { validateSettingsUpdate } from '../domain/validation.js';
  * - `GET /settings` (`200`)
  * - `PUT /settings` (validates integer lead times in `[1, 30]`; returns `200` or `400 VALIDATION_ERROR`)
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
  * @returns {void}
  */

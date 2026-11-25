@@ -7,7 +7,7 @@
  * Registers analytics routes on the router:
  * - `GET /analytics/summary` (returns monthly/annual spend totals across active subscriptions only).
  *
- * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {Router} router - Application HTTP router.
  * @param {object} context - Shared route dependencies (`store`, `sendJson`).
  * @returns {void}
  */

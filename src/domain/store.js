@@ -178,7 +178,7 @@ export class Store {
    * Record is retained for billing history and analytics exclusion.
    *
    * @param {string} id - Subscription UUID.
-   * @returns {{ subscription?: object, notFound?: boolean, conflict?: boolean }} Result union; `conflict: true` if already cancelled.
+   * @returns {object} Result object with optional `subscription`, `notFound`, or `conflict` (`true` if already cancelled).
    */
   cancelSubscription(id) {
     const existing = this.subscriptions.get(id);
@@ -284,7 +284,7 @@ export class Store {
    *
    * @param {string} id - Trial UUID.
    * @param {'convert' | 'cancel'} action - Resolution action.
-   * @returns {{ trial?: object, notFound?: boolean, invalidStatus?: boolean, currentStatus?: string, invalidAction?: boolean }}
+   * @returns {object} Result object with optional `trial`, `notFound`, `invalidStatus`, `currentStatus`, or `invalidAction`.
    */
   resolveTrial(id, action) {
     const trial = this.trials.get(id);
@@ -364,7 +364,7 @@ export class Store {
    * from `dateConfirmed`, and clears `billingDue` / `overdue` flags.
    *
    * @param {{ subscriptionId: string, paymentStatus: 'paid' | 'skipped', dateConfirmed: string }} data - Validated confirmation payload.
-   * @returns {{ event?: object, subscription?: object, notFound?: boolean, invalid?: boolean, billingNotDue?: boolean, message?: string }}
+   * @returns {object} Result object with optional `event`, `subscription`, `notFound`, `invalid`, `billingNotDue`, or `message`.
    */
   confirmBillingEvent(data) {
     const { subscriptionId, paymentStatus, dateConfirmed } = data;
@@ -465,7 +465,7 @@ export class Store {
    * Marks a notification as dismissed with an ISO-8601 `dismissedAt` timestamp (FR-05.5).
    *
    * @param {string} id - Notification UUID.
-   * @returns {{ notification?: object, notFound?: boolean, conflict?: boolean }} `conflict: true` if already dismissed.
+   * @returns {object} Result object with optional `notification`, `notFound`, or `conflict` (`true` if already dismissed).
    */
   dismissNotification(id) {
     const notif = this.notifications.get(id);
