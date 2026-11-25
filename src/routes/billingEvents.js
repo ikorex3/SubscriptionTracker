@@ -1,5 +1,20 @@
+/**
+ * @module routes/billingEvents
+ * HTTP route handlers for `/billing-events` confirmation and immutable billing history (FR-03.1..FR-03.5, NFR-03).
+ * By design, no `PUT`, `PATCH`, or `DELETE` endpoints are exposed to enforce billing log immutability.
+ */
 import { validateBillingEventCreate } from '../domain/validation.js';
 
+/**
+ * Registers billing event routes on the router:
+ * - `GET /billing-events` (filters: `subscriptionId`, `paymentStatus`, `sort=asc|desc`)
+ * - `POST /billing-events` (confirms a due/overdue payment; returns `201`, `400 BILLING_NOT_DUE` / `VALIDATION_ERROR`, or `404`)
+ * - `GET /billing-events/:id` (`200` or `404`)
+ *
+ * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
+ * @returns {void}
+ */
 export function registerBillingEventRoutes(router, { store, logger, sendJson, sendError, parseBody }) {
   // GET /billing-events
   router.get('/billing-events', (req, res, { urlObj }) => {

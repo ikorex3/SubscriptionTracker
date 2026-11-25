@@ -15,6 +15,7 @@
 - [Domain Model](#domain-model)
 - [Use Cases](#use-cases)
 - [Project Structure](#project-structure)
+- [Coding Convention](#coding-convention)
 - [Development Tooling](#development-tooling)
 - [Getting Started](#getting-started)
 
@@ -114,6 +115,28 @@ lab1/
 ├── openapi.yaml          # Formal OpenAPI 3.0.3 contract specification
 └── README.md             # This file
 ```
+
+---
+
+## Coding Convention
+
+This codebase targets **Node.js v25** using native **ES Modules** (`"type": "module"` in `package.json`).
+
+### Formatting & Syntax
+- **Indentation:** 2 spaces (no tabs).
+- **Quotes:** Single quotes (`'...'`) for strings; double quotes only when avoiding escaped single quotes inside a string; template literals only for interpolation or multiline strings.
+- **Semicolons:** Always terminate statements with semicolons (`;`).
+- **Imports:** Always use explicit `.js` file extensions for relative module imports (e.g., `import { Store } from './domain/store.js';`) and `node:` prefixes for built-in modules (`node:http`, `node:crypto`, `node:fs`, `node:path`).
+- **Trailing newline:** End every source file with a single newline.
+
+### Naming
+- **Variables, functions, methods, and JSON/object properties:** `camelCase` (e.g., `calculateNextBillingDate`, `serviceName`).
+- **Classes:** `PascalCase` (e.g., `Store`, `Logger`, `Router`).
+- **Module-level constants & logged action names:** `UPPER_SNAKE_CASE` (e.g., `SUBSCRIPTION_STATUS_FILTERS`, `CREATE_SUBSCRIPTION`, `RESOLVE_TRIAL`).
+- **Source filenames:** `camelCase` (e.g., `billingEvents.js`).
+
+### Documentation (JSDoc)
+- Public modules, classes, domain functions, and route registrars use structured JSDoc blocks (`@param`, `@returns`, `@throws`) documenting non-obvious invariants (in-memory store semantics, soft deletes, immutable billing history, and error codes).
 
 ---
 

@@ -8,6 +8,6 @@ const app = createApp({ inMemory: false, enableLogging: true });
 
 app.listen(PORT, () => {
   console.log(`[Subscription Tracker API] Server listening on http://localhost:${PORT}`);
-  console.log(`[Subscription Tracker API] OpenAPI specification loaded from openapi.yaml`);
+  console.log('[Subscription Tracker API] OpenAPI specification loaded from openapi.yaml');
 });
 

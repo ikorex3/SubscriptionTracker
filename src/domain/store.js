@@ -1,6 +1,8 @@
 /**
- * In-memory / persisted Data Store for Subscription Tracker.
- * Manages Subscriptions, Trials, BillingEvents, Notifications, and Settings.
+ * @module domain/store
+ * In-memory domain repository for Subscription Tracker.
+ * Persistence is strictly in-memory for the process lifetime; full state can be
+ * serialized/restored via {@link Store#exportData} and {@link Store#importData}.
  */
 import { randomUUID } from 'node:crypto';
 import {
@@ -9,11 +11,19 @@ import {
   calculateTotalAnalytics
 } from './calculations.js';
 
+/**
+ * Stateful in-memory store managing Subscriptions, Trials, BillingEvents,
+ * Notifications, and global Settings. All monetary values use UAH.
+ */
 export class Store {
   constructor() {
     this.reset();
   }
 
+  /**
+   * Resets all entity maps to empty and restores default settings (3-day lead times, UAH).
+   * @returns {void}
+   */
   reset() {
     this.subscriptions = new Map();
     this.trials = new Map();
@@ -31,6 +41,12 @@ export class Store {
   // Subscriptions
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Lists subscriptions, optionally filtered by lifecycle status (CHG-01).
+   *
+   * @param {'active' | 'cancelled' | 'all' | undefined} [filterStatus] - Status filter; omitted or `'all'` returns all records.
+   * @returns {object[]} Matching subscription records.
+   */
   listSubscriptions(filterStatus) {
     const list = Array.from(this.subscriptions.values());
     if (filterStatus && filterStatus !== 'all') {
@@ -39,10 +55,23 @@ export class Store {
     return list;
   }
 
+  /**
+   * Retrieves a subscription by UUID.
+   *
+   * @param {string} id - Subscription UUID.
+   * @returns {object | null} Subscription record or `null` if not found.
+   */
   getSubscription(id) {
     return this.subscriptions.get(id) || null;
   }
 
+  /**
+   * Creates and stores a new active subscription in UAH, computing initial
+   * `nextBillingDate`, spend estimates, and due/overdue flags.
+   *
+   * @param {object} data - Validated subscription creation payload.
+   * @returns {object} Newly created subscription record.
+   */
   createSubscription(data) {
     const id = randomUUID();
     const now = new Date().toISOString();
@@ -102,6 +131,14 @@ export class Store {
     return subscription;
   }
 
+  /**
+   * Partially updates an existing subscription and recalculates spend estimates
+   * and `nextBillingDate` whenever cost or billing interval fields change.
+   *
+   * @param {string} id - Subscription UUID.
+   * @param {object} data - Fields to merge into the existing subscription.
+   * @returns {object | null} Updated subscription or `null` if not found.
+   */
   updateSubscription(id, data) {
     const existing = this.subscriptions.get(id);
     if (!existing) return null;
@@ -136,6 +173,13 @@ export class Store {
     return updated;
   }
 
+  /**
+   * Soft-deletes a subscription by transitioning `status` to `'cancelled'` (FR-01.3).
+   * Record is retained for billing history and analytics exclusion.
+   *
+   * @param {string} id - Subscription UUID.
+   * @returns {{ subscription?: object, notFound?: boolean, conflict?: boolean }} Result union; `conflict: true` if already cancelled.
+   */
   cancelSubscription(id) {
     const existing = this.subscriptions.get(id);
     if (!existing) return { notFound: true };
@@ -155,6 +199,12 @@ export class Store {
   // Trials
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Lists free trials, optionally filtered by status.
+   *
+   * @param {'active' | 'expired' | 'converted' | 'cancelled' | undefined} [filterStatus] - Optional status filter.
+   * @returns {object[]} Matching trial records.
+   */
   listTrials(filterStatus) {
     const list = Array.from(this.trials.values());
     if (filterStatus) {
@@ -163,10 +213,22 @@ export class Store {
     return list;
   }
 
+  /**
+   * Retrieves a free trial by UUID.
+   *
+   * @param {string} id - Trial UUID.
+   * @returns {object | null} Trial record or `null` if not found.
+   */
   getTrial(id) {
     return this.trials.get(id) || null;
   }
 
+  /**
+   * Creates and stores a new active free trial (`assumedCost: 0.00`).
+   *
+   * @param {object} data - Validated trial creation payload.
+   * @returns {object} Newly created trial record.
+   */
   createTrial(data) {
     const id = randomUUID();
     const now = new Date().toISOString();
@@ -195,6 +257,14 @@ export class Store {
     return trial;
   }
 
+  /**
+   * Updates mutable fields of a free trial. Ignores any `status` property in `data`
+   * because trial status transitions are server-controlled.
+   *
+   * @param {string} id - Trial UUID.
+   * @param {object} data - Partial trial update payload.
+   * @returns {object | null} Updated trial or `null` if not found.
+   */
   updateTrial(id, data) {
     const existing = this.trials.get(id);
     if (!existing) return null;
@@ -207,6 +277,15 @@ export class Store {
     return updated;
   }
 
+  /**
+   * Resolves an `'expired'` trial via `'convert'` or `'cancel'` (FR-02.5).
+   * Invariant: only trials with `status === 'expired'` can be resolved; if
+   * `linkedSubscriptionId` is set, the linked subscription's status is updated accordingly.
+   *
+   * @param {string} id - Trial UUID.
+   * @param {'convert' | 'cancel'} action - Resolution action.
+   * @returns {{ trial?: object, notFound?: boolean, invalidStatus?: boolean, currentStatus?: string, invalidAction?: boolean }}
+   */
   resolveTrial(id, action) {
     const trial = this.trials.get(id);
     if (!trial) return { notFound: true };
@@ -246,6 +325,14 @@ export class Store {
   // Billing Events
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Lists immutable billing history events, optionally filtered and sorted by `dateConfirmed`.
+   *
+   * @param {string} [subscriptionId] - Filter by parent subscription UUID.
+   * @param {'paid' | 'skipped'} [paymentStatus] - Filter by confirmation status.
+   * @param {'asc' | 'desc'} [sort='desc'] - Sort order by `dateConfirmed`.
+   * @returns {object[]} Matching billing event records.
+   */
   listBillingEvents(subscriptionId, paymentStatus, sort = 'desc') {
     let list = Array.from(this.billingEvents.values());
     if (subscriptionId) {
@@ -261,10 +348,24 @@ export class Store {
     return list;
   }
 
+  /**
+   * Retrieves an immutable billing event by UUID.
+   *
+   * @param {string} id - BillingEvent UUID.
+   * @returns {object | null} BillingEvent record or `null` if not found.
+   */
   getBillingEvent(id) {
     return this.billingEvents.get(id) || null;
   }
 
+  /**
+   * Confirms a due or overdue billing event for an active subscription (FR-03.1..FR-03.4, NFR-03).
+   * Appends an immutable `BillingEvent` snapshot, advances `subscription.nextBillingDate`
+   * from `dateConfirmed`, and clears `billingDue` / `overdue` flags.
+   *
+   * @param {{ subscriptionId: string, paymentStatus: 'paid' | 'skipped', dateConfirmed: string }} data - Validated confirmation payload.
+   * @returns {{ event?: object, subscription?: object, notFound?: boolean, invalid?: boolean, billingNotDue?: boolean, message?: string }}
+   */
   confirmBillingEvent(data) {
     const { subscriptionId, paymentStatus, dateConfirmed } = data;
     const subscription = this.subscriptions.get(subscriptionId);
@@ -320,6 +421,10 @@ export class Store {
   // Analytics
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Computes aggregate monthly and annual spend in UAH across active subscriptions (FR-04.1..FR-04.3).
+   * @returns {object} Analytics summary object.
+   */
   getAnalyticsSummary() {
     return calculateTotalAnalytics(Array.from(this.subscriptions.values()));
   }
@@ -328,6 +433,14 @@ export class Store {
   // Notifications
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Lists in-app notifications ordered by priority (`TRIAL_EXPIRY`, `STARTUP_SUMMARY`, `RENEWAL`)
+   * and descending `createdAt` timestamp.
+   *
+   * @param {'TRIAL_EXPIRY' | 'STARTUP_SUMMARY' | 'RENEWAL'} [type] - Optional notification type filter.
+   * @param {boolean} [includeDismissed=false] - Whether to include already-dismissed notifications.
+   * @returns {object[]} Sorted notification records.
+   */
   listNotifications(type, includeDismissed = false) {
     let list = Array.from(this.notifications.values());
     if (!includeDismissed) {
@@ -348,6 +461,12 @@ export class Store {
     return list;
   }
 
+  /**
+   * Marks a notification as dismissed with an ISO-8601 `dismissedAt` timestamp (FR-05.5).
+   *
+   * @param {string} id - Notification UUID.
+   * @returns {{ notification?: object, notFound?: boolean, conflict?: boolean }} `conflict: true` if already dismissed.
+   */
   dismissNotification(id) {
     const notif = this.notifications.get(id);
     if (!notif) return { notFound: true };
@@ -362,10 +481,20 @@ export class Store {
   // Settings
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Returns a shallow copy of the global notification lead-time settings (FR-05.1, FR-05.2).
+   * @returns {{ renewalLeadTimeDays: number, trialLeadTimeDays: number, currency: 'UAH', updatedAt: string }}
+   */
   getSettings() {
     return { ...this.settings };
   }
 
+  /**
+   * Updates global notification lead-time settings while preserving `currency: 'UAH'`.
+   *
+   * @param {object} data - Validated settings fields (`renewalLeadTimeDays`, `trialLeadTimeDays`).
+   * @returns {{ renewalLeadTimeDays: number, trialLeadTimeDays: number, currency: 'UAH', updatedAt: string }}
+   */
   updateSettings(data) {
     const now = new Date().toISOString();
     this.settings = {
@@ -381,6 +510,13 @@ export class Store {
   // System Startup Check
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Executes startup evaluation across all trials and subscriptions (FR-02.4, FR-03.3, FR-05.6):
+   * transitions past-due active trials to `'expired'`, flags due/overdue active subscriptions,
+   * and generates `TRIAL_EXPIRY`, `RENEWAL`, and `STARTUP_SUMMARY` notifications.
+   *
+   * @returns {{ newlyExpiredTrials: object[], overdueSubscriptions: object[], notificationsGenerated: number, checkedAt: string }}
+   */
   runStartupCheck() {
     const today = new Date().toISOString().slice(0, 10);
     const now = new Date().toISOString();
@@ -492,6 +628,10 @@ export class Store {
   // Export & Import
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Serializes the entire store into a versioned (`'1.0.0'`) backup snapshot (FR-06.2, NFR-06).
+   * @returns {object} Complete `DataExport` snapshot.
+   */
   exportData() {
     return {
       version: '1.0.0',
@@ -504,6 +644,13 @@ export class Store {
     };
   }
 
+  /**
+   * Replaces all in-memory store collections with the contents of a validated backup snapshot (FR-06.3).
+   * Destructive: calls {@link Store#reset} before loading the snapshot.
+   *
+   * @param {object} snapshot - Validated `DataExport` payload (`version === '1.0.0'`).
+   * @returns {{ message: string, importedAt: string }}
+   */
   importData(snapshot) {
     this.reset();
     for (const sub of snapshot.subscriptions || []) {

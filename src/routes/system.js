@@ -1,5 +1,19 @@
+/**
+ * @module routes/system
+ * HTTP route handlers for `/system` startup evaluation and JSON backup export/import (FR-06.2..FR-06.4, NFR-05, NFR-06).
+ */
 import { validateImportData } from '../domain/validation.js';
 
+/**
+ * Registers system-level operation routes on the router:
+ * - `POST /system/startup-check` (`200` — detects expired trials, overdue subscriptions, and generates alerts)
+ * - `GET /system/export` (`200` — returns full `'1.0.0'` JSON snapshot)
+ * - `POST /system/import` (`200` or `400 INVALID_IMPORT_SCHEMA` — destructively replaces store state)
+ *
+ * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
+ * @returns {void}
+ */
 export function registerSystemRoutes(router, { store, logger, sendJson, sendError, parseBody }) {
   // POST /system/startup-check
   router.post('/system/startup-check', (req, res) => {

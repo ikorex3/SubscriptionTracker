@@ -1,11 +1,20 @@
 /**
- * Domain calculation utilities for Subscription Tracker.
- * Traced Requirements: FR-01.4, FR-01.5, FR-04.1, FR-04.2, FR-04.3
+ * @module domain/calculations
+ * Pure domain calculation utilities for Subscription Tracker.
+ * Uses fixed 30-day months and 365-day years per SRS formulas.
+ * Traced Requirements: FR-01.4, FR-01.5, FR-04.1, FR-04.2, FR-04.3.
  */
 
 /**
- * Calculates the next billing date based on the previous date and interval.
- * FR-01.4: Next Billing Date = Previous Date + Interval
+ * Calculates the next billing date by adding the billing interval to a base date.
+ * Uses UTC date arithmetic with 30 days per month and 365 days per year (FR-01.4).
+ *
+ * @param {string} baseDateStr - ISO calendar date (`YYYY-MM-DD`) to advance from.
+ * @param {'monthly' | 'annual' | 'custom'} intervalType - Recurrence interval type.
+ * @param {number} [customValue=0] - Positive multiplier when `intervalType` is `'custom'`.
+ * @param {'days' | 'months'} [customUnit='days'] - Unit for `'custom'` intervals.
+ * @returns {string} Next billing date formatted as `YYYY-MM-DD`.
+ * @throws {Error} When `baseDateStr` is invalid or interval parameters are unsupported.
  */
 export function calculateNextBillingDate(baseDateStr, intervalType, customValue = 0, customUnit = 'days') {
   const date = new Date(baseDateStr);
@@ -35,9 +44,16 @@ export function calculateNextBillingDate(baseDateStr, intervalType, customValue 
 }
 
 /**
- * Calculates annual and monthly spend estimates for a subscription.
- * FR-01.5: Annual Spend Estimate = (Cost ÷ Interval days) × 365
- * Total Monthly Spend = Annual Estimate ÷ 12
+ * Calculates normalized annual and monthly spend estimates in UAH for a subscription.
+ * Formula (FR-01.5): `annualSpendEstimate = (cost / intervalInDays) * 365`.
+ * For `'monthly'` intervals, `monthlySpendEstimate` equals `cost` directly; otherwise `annualSpendEstimate / 12`.
+ *
+ * @param {number} cost - Recurring subscription cost in UAH.
+ * @param {'monthly' | 'annual' | 'custom'} intervalType - Recurrence interval type.
+ * @param {number} [customValue=0] - Positive multiplier when `intervalType` is `'custom'`.
+ * @param {'days' | 'months'} [customUnit='days'] - Unit for `'custom'` intervals.
+ * @returns {{ annualSpendEstimate: number, monthlySpendEstimate: number }} Estimates rounded to 2 decimal places.
+ * @throws {Error} When the resolved interval length in days is less than or equal to zero.
  */
 export function calculateSpendEstimates(cost, intervalType, customValue = 0, customUnit = 'days') {
   const numericCost = Number(cost);
@@ -71,8 +87,17 @@ export function calculateSpendEstimates(cost, intervalType, customValue = 0, cus
 }
 
 /**
- * Aggregates spend analytics across active subscriptions only.
- * FR-04.1, FR-04.2, FR-04.3
+ * Aggregates total monthly and annual spend across active subscriptions only.
+ * Cancelled subscriptions are excluded from totals (FR-04.1, FR-04.2, FR-04.3).
+ *
+ * @param {Array<{ status: string, annualSpendEstimate?: number }>} [subscriptions=[]] - Subscription records to aggregate.
+ * @returns {{
+ *   totalMonthlySpend: number,
+ *   totalAnnualSpend: number,
+ *   currency: 'UAH',
+ *   activeSubscriptionCount: number,
+ *   calculatedAt: string
+ * }} Spend summary in UAH with ISO-8601 calculation timestamp.
  */
 export function calculateTotalAnalytics(subscriptions = []) {
   const activeSubs = subscriptions.filter((sub) => sub.status === 'active');

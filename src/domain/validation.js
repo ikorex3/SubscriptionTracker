@@ -1,7 +1,18 @@
 /**
- * Request validation utilities for OpenAPI 3.0.3 compliance.
+ * @module domain/validation
+ * Request payload and query parameter validators aligned with OpenAPI 3.0.3 contracts.
+ * Every validator returns an array of human-readable error strings (empty array means valid).
  */
 
+/**
+ * Validates the `POST /subscriptions` creation payload.
+ * Enforces non-empty `serviceName`, non-negative `cost`, valid `billingIntervalType`
+ * (plus `customIntervalValue`/`customIntervalUnit` when `'custom'`), `YYYY-MM-DD`
+ * `firstBillingDate`, and optional `notificationLeadTimeDays` in `[1, 30]`.
+ *
+ * @param {unknown} body - Parsed JSON request body.
+ * @returns {string[]} List of validation error messages; empty if valid.
+ */
 export function validateSubscriptionCreate(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {
@@ -45,11 +56,18 @@ export function validateSubscriptionCreate(body) {
   return errors;
 }
 
+/**
+ * Allowed values for the `status` query parameter on `GET /subscriptions` (CHG-01).
+ * @type {readonly string[]}
+ */
 export const SUBSCRIPTION_STATUS_FILTERS = ['active', 'cancelled', 'all'];
 
 /**
- * Validates the optional `status` query value of GET /subscriptions (CHG-01).
- * `undefined` means the parameter was omitted and is valid.
+ * Validates the optional `status` query parameter of `GET /subscriptions` (CHG-01).
+ * `undefined` indicates the parameter was omitted and is treated as valid.
+ *
+ * @param {string | undefined} value - Raw query parameter value.
+ * @returns {string[]} List of validation error messages; empty if valid.
  */
 export function validateSubscriptionStatusFilter(value) {
   if (value === undefined) return [];
@@ -59,6 +77,14 @@ export function validateSubscriptionStatusFilter(value) {
   return [];
 }
 
+/**
+ * Validates the `POST /trials` creation payload.
+ * Enforces non-empty `serviceName`, `YYYY-MM-DD` `startDate`/`endDate`,
+ * and optional `notificationLeadTimeDays` in `[1, 30]`.
+ *
+ * @param {unknown} body - Parsed JSON request body.
+ * @returns {string[]} List of validation error messages; empty if valid.
+ */
 export function validateTrialCreate(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {
@@ -87,6 +113,13 @@ export function validateTrialCreate(body) {
   return errors;
 }
 
+/**
+ * Validates the `POST /billing-events` confirmation payload.
+ * Enforces `subscriptionId`, `paymentStatus` (`'paid'` | `'skipped'`), and `YYYY-MM-DD` `dateConfirmed`.
+ *
+ * @param {unknown} body - Parsed JSON request body.
+ * @returns {string[]} List of validation error messages; empty if valid.
+ */
 export function validateBillingEventCreate(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {
@@ -109,6 +142,14 @@ export function validateBillingEventCreate(body) {
   return errors;
 }
 
+/**
+ * Validates the `PUT /settings` update payload.
+ * Both `renewalLeadTimeDays` and `trialLeadTimeDays` are optional, but when present
+ * must be integers in `[1, 30]`.
+ *
+ * @param {unknown} body - Parsed JSON request body.
+ * @returns {string[]} List of validation error messages; empty if valid.
+ */
 export function validateSettingsUpdate(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {
@@ -132,6 +173,13 @@ export function validateSettingsUpdate(body) {
   return errors;
 }
 
+/**
+ * Validates the `POST /system/import` backup snapshot payload (FR-06.3, NFR-05).
+ * Requires `version === '1.0.0'` and array types for optional collection keys.
+ *
+ * @param {unknown} body - Parsed JSON backup snapshot.
+ * @returns {string[]} List of validation error messages; empty if valid.
+ */
 export function validateImportData(body) {
   const errors = [];
   if (!body || typeof body !== 'object') {

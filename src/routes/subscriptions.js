@@ -1,5 +1,27 @@
+/**
+ * @module routes/subscriptions
+ * HTTP route handlers for `/subscriptions` lifecycle management (FR-01.1..FR-01.5, CHG-01).
+ */
 import { validateSubscriptionCreate, validateSubscriptionStatusFilter } from '../domain/validation.js';
 
+/**
+ * Registers subscription CRUD and soft-delete routes on the router:
+ * - `GET /subscriptions` (optional `?status=active|cancelled|all` filter)
+ * - `POST /subscriptions` (returns `201`)
+ * - `GET /subscriptions/:id/billing-events` (returns `200` or `404`)
+ * - `GET /subscriptions/:id` (returns `200` or `404`)
+ * - `PUT /subscriptions/:id` (returns `200`, `400`, or `404`)
+ * - `DELETE /subscriptions/:id` (soft delete: `status = 'cancelled'`, returns `200`, `404`, or `409`)
+ *
+ * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {object} context - Shared route dependencies.
+ * @param {import('../domain/store.js').Store} context.store - Domain data store.
+ * @param {import('../utils/logger.js').Logger} context.logger - Business action logger.
+ * @param {Function} context.sendJson - JSON response helper `(res, statusCode, payload) => void`.
+ * @param {Function} context.sendError - Error response helper `(res, statusCode, code, message, details) => void`.
+ * @param {Function} context.parseBody - Async JSON body parser `(req) => Promise<object>`.
+ * @returns {void}
+ */
 export function registerSubscriptionRoutes(router, { store, logger, sendJson, sendError, parseBody }) {
   // GET /subscriptions?status=active|cancelled|all (CHG-01)
   router.get('/subscriptions', (req, res, { urlObj }) => {

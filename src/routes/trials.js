@@ -1,5 +1,21 @@
+/**
+ * @module routes/trials
+ * HTTP route handlers for `/trials` free trial tracking and resolution (FR-02.1..FR-02.5).
+ */
 import { validateTrialCreate } from '../domain/validation.js';
 
+/**
+ * Registers free trial management routes on the router:
+ * - `GET /trials` (optional `?status=` filter)
+ * - `POST /trials` (validates `linkedSubscriptionId` existence if provided; returns `201`, `400`, or `404`)
+ * - `GET /trials/:id` (`200` or `404`)
+ * - `PUT /trials/:id` (`200`, `400`, or `404`; ignores `status`)
+ * - `PATCH /trials/:id/resolve` (`convert` | `cancel` on `'expired'` trials only; returns `200`, `400 INVALID_STATUS_TRANSITION`, or `404`)
+ *
+ * @param {import('../utils/router.js').Router} router - Application HTTP router.
+ * @param {object} context - Shared route dependencies (`store`, `logger`, `sendJson`, `sendError`, `parseBody`).
+ * @returns {void}
+ */
 export function registerTrialRoutes(router, { store, logger, sendJson, sendError, parseBody }) {
   // GET /trials
   router.get('/trials', (req, res, { urlObj }) => {
