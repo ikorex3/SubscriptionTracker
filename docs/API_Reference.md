@@ -56,6 +56,7 @@ All request and response bodies use JSON. Dates use ISO calendar format (`YYYY-M
 - Optional runtime fields supported by store: `paymentMethod`, `category`
 
 **Domain Rules:**
+- `PUT /subscriptions/{id}` performs partial field merging and validates JSON syntax (`400 VALIDATION_ERROR` on malformed JSON), recalculating `annualSpendEstimate`, `monthlySpendEstimate`, and `nextBillingDate` when cost or interval fields change.
 - Monthly = `30` days, Annual = `365` days, Custom = `N` days or `N * 30` days (`FR-01.4`).
 - `annualSpendEstimate = round((cost / intervalInDays) * 365, 2)`; `monthlySpendEstimate` = `cost` for `monthly`, otherwise `round(annualSpendEstimate / 12, 2)` (`FR-01.5`).
 - `GET /subscriptions?status=` rejects any value outside `active`, `cancelled`, `all` with `400 VALIDATION_ERROR`; empty matches return `200 []` (`CHG-01`).
@@ -112,6 +113,7 @@ All request and response bodies use JSON. Dates use ISO calendar format (`YYYY-M
 | `PATCH` | `/notifications/{id}/dismiss` | Mark notification dismissed with `dismissedAt` timestamp | `200`, `404`, `409`, `500` | FR-05.5 |
 
 - Priority sort order: `TRIAL_EXPIRY` (1) → `STARTUP_SUMMARY` (2) → `RENEWAL` (3).
+- By default (`dismissed` omitted or not `'true'`), only active (`isDismissed === false`) notifications are returned; pass `?dismissed=true` to include dismissed notifications.
 
 ---
 
@@ -131,6 +133,14 @@ All request and response bodies use JSON. Dates use ISO calendar format (`YYYY-M
 | `POST` | `/system/startup-check` | Evaluate expired trials, due/overdue subscriptions, and generate notifications | `200`, `500` | FR-02.4, FR-03.3, FR-05.6 |
 | `GET` | `/system/export` | Export full state snapshot (`version: "1.0.0"`) | `200`, `500` | FR-06.2, NFR-06 |
 | `POST` | `/system/import` | Validate `version: "1.0.0"` snapshot and **replace** all in-memory store state | `200`, `400`, `500` | FR-06.3, FR-06.4, NFR-05 |
+
+### 2.8 Static Web UI Assets (`src/app.js`)
+
+| Method | Path | Content-Type | Purpose |
+|---|---|---|---|
+| `GET` | `/` or `/index.html` | `text/html; charset=utf-8` | Serves the single-page Web UI (`public/index.html`) |
+| `GET` | `/styles.css` | `text/css; charset=utf-8` | Serves Web UI stylesheet (`public/styles.css`) |
+| `GET` | `/app.js` | `text/javascript; charset=utf-8` | Serves Web UI ES6+ client script (`public/app.js`) |
 
 ---
 
