@@ -3,6 +3,9 @@
  * Modular architecture with OpenAPI 3.0.3 compliance and request/action logging.
  */
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Store } from './domain/store.js';
 import { Logger } from './utils/logger.js';
 import { Router } from './utils/router.js';
@@ -74,6 +77,14 @@ export function createApp(options = {}) {
   registerSettingsRoutes(router, routeContext);
   registerSystemRoutes(router, routeContext);
 
+  const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
+  const staticAssets = new Map([
+    ['/', { file: 'index.html', contentType: 'text/html; charset=utf-8' }],
+    ['/index.html', { file: 'index.html', contentType: 'text/html; charset=utf-8' }],
+    ['/styles.css', { file: 'styles.css', contentType: 'text/css; charset=utf-8' }],
+    ['/app.js', { file: 'app.js', contentType: 'text/javascript; charset=utf-8' }]
+  ]);
+
   const server = http.createServer(async (req, res) => {
     const startTime = performance.now();
     const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -93,6 +104,20 @@ export function createApp(options = {}) {
     });
 
     try {
+      if (method === 'GET' && staticAssets.has(pathname)) {
+        const asset = staticAssets.get(pathname);
+        const filePath = path.join(publicDir, asset.file);
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath);
+          res.writeHead(200, {
+            'Content-Type': asset.contentType,
+            'Content-Length': content.length
+          });
+          res.end(content);
+          return;
+        }
+      }
+
       const match = router.match(method, pathname);
       if (match) {
         return await match.handler(req, res, { params: match.params, urlObj });

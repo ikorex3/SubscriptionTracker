@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Tracker</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>Subscription Tracker</h1>
+        <p class="subtitle">Recurring subscriptions, free trials, billing history &amp; spend in UAH</p>
+      </div>
+      <button id="startup-check-btn" class="btn btn-primary" type="button">Run Startup Check</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="status-banner" class="banner hidden" role="status" aria-live="polite"></div>
+
+    <!-- Analytics Summary -->
+    <section class="card" aria-labelledby="analytics-heading">
+      <div class="section-header">
+        <h2 id="analytics-heading">Analytics Summary (UAH)</h2>
+        <span id="analytics-updated" class="muted"></span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <span class="stat-label">Monthly Spend</span>
+          <strong id="stat-monthly" class="stat-value">0.00 UAH</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Annual Spend</span>
+          <strong id="stat-annual" class="stat-value">0.00 UAH</strong>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Active Subscriptions</span>
+          <strong id="stat-active" class="stat-value">0</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notifications -->
+    <section class="card" aria-labelledby="notifications-heading">
+      <div class="section-header">
+        <h2 id="notifications-heading">Active Notifications</h2>
+      </div>
+      <div id="notifications-list" class="stack-list">
+        <p class="muted">No active notifications.</p>
+      </div>
+    </section>
+
+    <!-- Subscriptions -->
+    <section class="card" aria-labelledby="subscriptions-heading">
+      <div class="section-header">
+        <h2 id="subscriptions-heading">Subscriptions</h2>
+        <div class="filter-group" role="group" aria-label="Filter subscriptions by status">
+          <button class="btn btn-filter active" data-status="all" type="button">All</button>
+          <button class="btn btn-filter" data-status="active" type="button">Active</button>
+          <button class="btn btn-filter" data-status="cancelled" type="button">Cancelled</button>
+        </div>
+      </div>
+
+      <form id="subscription-form" class="form-grid">
+        <label>
+          Service Name
+          <input type="text" name="serviceName" placeholder="e.g. Netflix" required>
+        </label>
+        <label>
+          Cost (UAH)
+          <input type="number" name="cost" step="0.01" min="0" placeholder="199.00" required>
+        </label>
+        <label>
+          Billing Interval
+          <select name="billingIntervalType" id="sub-interval-type">
+            <option value="monthly">Monthly (30 days)</option>
+            <option value="annual">Annual (365 days)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label id="custom-value-wrap" class="hidden">
+          Custom Value
+          <input type="number" name="customIntervalValue" min="1" placeholder="90">
+        </label>
+        <label id="custom-unit-wrap" class="hidden">
+          Custom Unit
+          <select name="customIntervalUnit">
+            <option value="days">Days</option>
+            <option value="months">Months</option>
+          </select>
+        </label>
+        <label>
+          First Billing Date
+          <input type="date" name="firstBillingDate" required>
+        </label>
+        <label>
+          Lead Time (days)
+          <input type="number" name="notificationLeadTimeDays" min="1" max="30" placeholder="Default">
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Add Subscription</button>
+        </div>
+      </form>
+
+      <div id="subscriptions-list" class="stack-list">
+        <p class="muted">No subscriptions found.</p>
+      </div>
+    </section>
+
+    <!-- Free Trials -->
+    <section class="card" aria-labelledby="trials-heading">
+      <div class="section-header">
+        <h2 id="trials-heading">Free Trials</h2>
+      </div>
+
+      <form id="trial-form" class="form-grid">
+        <label>
+          Service Name
+          <input type="text" name="serviceName" placeholder="e.g. Adobe CC" required>
+        </label>
+        <label>
+          Start Date
+          <input type="date" name="startDate" required>
+        </label>
+        <label>
+          End Date
+          <input type="date" name="endDate" required>
+        </label>
+        <label>
+          Linked Subscription
+          <select name="linkedSubscriptionId" id="trial-linked-sub">
+            <option value="">Standalone (none)</option>
+          </select>
+        </label>
+        <label>
+          Lead Time (days)
+          <input type="number" name="notificationLeadTimeDays" min="1" max="30" placeholder="Default">
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Add Trial</button>
+        </div>
+      </form>
+
+      <div id="trials-list" class="stack-list">
+        <p class="muted">No free trials recorded.</p>
+      </div>
+    </section>
+
+    <!-- Billing History -->
+    <section class="card" aria-labelledby="billing-heading">
+      <div class="section-header">
+        <h2 id="billing-heading">Billing History (Immutable)</h2>
+      </div>
+      <div id="billing-list" class="stack-list">
+        <p class="muted">No billing events confirmed yet.</p>
+      </div>
+    </section>
+
+    <!-- Settings & Backup -->
+    <section class="card" aria-labelledby="settings-heading">
+      <div class="section-header">
+        <h2 id="settings-heading">Settings &amp; Backup</h2>
+      </div>
+      <div class="two-col">
+        <form id="settings-form" class="form-grid">
+          <label>
+            Renewal Lead Time (1–30 days)
+            <input type="number" name="renewalLeadTimeDays" id="setting-renewal-days" min="1" max="30" required>
+          </label>
+          <label>
+            Trial Lead Time (1–30 days)
+            <input type="number" name="trialLeadTimeDays" id="setting-trial-days" min="1" max="30" required>
+          </label>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save Settings</button>
+          </div>
+        </form>
+
+        <div class="backup-box">
+          <h3>JSON Snapshot Export / Import</h3>
+          <div class="backup-actions">
+            <button id="export-btn" class="btn btn-secondary" type="button">Export JSON</button>
+          </div>
+          <div class="import-row">
+            <input id="import-file" type="file" accept="application/json,.json">
+            <button id="import-btn" class="btn btn-danger" type="button">Import Snapshot</button>
+          </div>
+          <p class="muted small">Importing a snapshot replaces all existing subscriptions, trials, billing events, notifications, and settings.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
